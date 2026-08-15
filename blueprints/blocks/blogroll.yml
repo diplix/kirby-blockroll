@@ -1,0 +1,81 @@
+name: Blogroll
+icon: url
+wysiwyg: true
+preview: fields
+fields:
+  links:
+    label: Links
+    type: structure
+    fields:
+      url:
+        label: URL
+        type: url
+        required: true
+        width: 1/2
+      active:
+        label: Aktiv
+        type: toggle
+        default: true
+        width: 1/2
+      name:
+        label: Name
+        type: text
+        width: 1/2
+        help: Leer lassen → wird beim Speichern per Discover befüllt
+      feedUrl:
+        label: Feed-URL
+        type: url
+        width: 1/2
+      description:
+        label: Beschreibung
+        type: textarea
+        buttons: false
+      photo:
+        label: Avatar / Icon URL
+        type: url
+      xfn:
+        label: XFN
+        type: multiselect
+        options:
+          friend: friend
+          acquaintance: acquaintance
+          contact: contact
+          met: met
+          co-worker: co-worker
+          colleague: colleague
+          co-resident: co-resident
+          neighbor: neighbor
+          child: child
+          parent: parent
+          sibling: sibling
+          spouse: spouse
+          kin: kin
+          muse: muse
+          crush: crush
+          date: date
+          sweetheart: sweetheart
+          me: me
+      added:
+        label: Hinzugefügt
+        type: date
+        default: today
+        width: 1/2
+  sortBy:
+    label: Sortierung
+    type: select
+    default: name
+    options:
+      name: Nach Name
+      added: Neueste zuerst
+      manual: Manuell (Reihenfolge oben)
+    width: 1/3
+  showAvatars:
+    label: Avatare
+    type: toggle
+    default: true
+    width: 1/3
+  showXfn:
+    label: XFN anzeigen
+    type: toggle
+    default: false
+    width: 1/3

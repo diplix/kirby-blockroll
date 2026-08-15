@@ -1,0 +1,80 @@
+<?php
+
+/**
+ * Kirby Blockroll — blogroll block with h-cards, XFN and URL discovery.
+ *
+ * @package   Blockroll
+ * @author    Felix Schwenzel
+ * @copyright Felix Schwenzel
+ * @license   GPL-2.0-or-later
+ *
+ * Discovery and XFN logic adapted from pfefferle/wordpress-blockroll
+ * (https://github.com/pfefferle/wordpress-blockroll), GPL-2.0-or-later.
+ */
+
+use Blockroll\Autofill;
+use Kirby\Cms\App;
+use Kirby\Cms\Page;
+
+@include_once __DIR__ . '/vendor/autoload.php';
+
+if (!class_exists(\Blockroll\Discovery::class)) {
+    spl_autoload_register(static function (string $class): void {
+        if (!str_starts_with($class, 'Blockroll\\')) {
+            return;
+        }
+        $relative = str_replace('\\', '/', substr($class, strlen('Blockroll\\')));
+        $path = __DIR__ . '/src/' . $relative . '.php';
+        if (is_file($path)) {
+            require $path;
+        }
+    });
+}
+
+App::plugin('diplix/blockroll', [
+    'options' => [
+        'discoverTimeout' => 8,
+        // Cache remote avatars via GET /blockroll/image?url=… (site/cache/blockroll-photos)
+        'proxyPhotos'   => false,
+        'proxySize'     => 96, // px square (2× retina for ~48px CSS avatars)
+        'proxyTimeout'  => 10,
+        'proxyMaxBytes' => 512000,
+        'proxyCache'    => null, // default: {kirby cache root}/blockroll-photos
+    ],
+    'blueprints' => [
+        'blocks/blogroll' => __DIR__ . '/blueprints/blocks/blogroll.yml',
+    ],
+    'snippets' => [
+        'blocks/blogroll' => __DIR__ . '/snippets/blocks/blogroll.php',
+    ],
+    'assets' => [
+        'blockroll.css' => __DIR__ . '/assets/blockroll.css',
+    ],
+    'api' => [
+        'routes' => require __DIR__ . '/config/api.php',
+    ],
+    'routes' => require __DIR__ . '/config/routes.php',
+    'hooks' => [
+        'page.update:after' => function (Page $newPage, Page $oldPage) {
+            Autofill::enrichPage($newPage);
+        },
+        'page.create:after' => function (Page $page) {
+            Autofill::enrichPage($page);
+        },
+        // Inject frontend CSS only when a blogroll block is present
+        'page.render:after' => function (string $contentType, array $data, string $html, $page) {
+            if (
+                $contentType !== 'html' ||
+                str_contains($html, 'blockroll-blogroll') === false ||
+                ($head = strpos($html, '</head>')) === false
+            ) {
+                return $html;
+            }
+
+            $url = $this->plugin('diplix/blockroll')->asset('blockroll.css')->url();
+            $tag = '<link rel="stylesheet" href="' . $url . '">' . PHP_EOL;
+
+            return substr_replace($html, $tag, $head, 0);
+        },
+    ],
+]);

@@ -1,0 +1,83 @@
+/**
+ * Frontend styles for the blogroll block.
+ * Adapted from pfefferle/wordpress-blockroll style.scss (GPL-2.0-or-later).
+ * https://github.com/pfefferle/wordpress-blockroll
+ */
+
+.blockroll-blogroll {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.blockroll-blogroll .h-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  margin-bottom: 1em;
+}
+
+.blockroll-blogroll .h-card .u-photo,
+.blockroll-blogroll .h-card .blockroll-no-photo {
+  grid-row: 1 / span 2;
+  align-self: start;
+  display: block;
+  width: 2.5em;
+  height: 2.5em;
+  margin-right: 0.75em;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.blockroll-blogroll .h-card .blockroll-no-photo {
+  background: currentcolor;
+  opacity: 0.1;
+}
+
+.blockroll-blogroll .h-card .u-url {
+  grid-column: 2;
+  font-weight: 600;
+}
+
+.blockroll-blogroll .h-card .p-note {
+  grid-column: 2;
+  margin: 0;
+  opacity: 0.75;
+  font-size: 0.875em;
+}
+
+.blockroll-blogroll .h-card .blockroll-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75em;
+  grid-column: 2;
+  font-size: 0.7em;
+  opacity: 0.55;
+}
+
+.blockroll-blogroll .h-card .blockroll-xfn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75em;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.blockroll-blogroll .h-card .blockroll-meta a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.blockroll-blogroll .h-card .blockroll-meta a:hover {
+  text-decoration: underline;
+}
+
+.blockroll-blogroll .h-card .u-feed,
+.blockroll-blogroll .h-card .blockroll-feed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+}
