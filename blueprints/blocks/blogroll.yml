@@ -6,6 +6,19 @@ fields:
   links:
     label: Links
     type: structure
+    columns:
+      photo:
+        label: " "
+        width: 1/16
+        mobile: true
+      url:
+        width: 5/12
+        mobile: true
+      name:
+        width: 1/4
+        mobile: true
+      xfn:
+        width: 1/4
     fields:
       url:
         label: URL
@@ -21,7 +34,7 @@ fields:
         label: Name
         type: text
         width: 1/2
-        help: Leer lassen → wird beim Speichern per Discover befüllt
+        help: Leer lassen → wird beim Speichern per Discover befüllt (wenn Autofill aktiv)
       feedUrl:
         label: Feed-URL
         type: url
@@ -30,9 +43,11 @@ fields:
         label: Beschreibung
         type: textarea
         buttons: false
+        help: KirbyText erlaubt (z. B. Links). Wird als p-note gerendert.
       photo:
         label: Avatar / Icon URL
         type: url
+        help: In der Tabellenübersicht als Bild; im Editor normale URL
       xfn:
         label: XFN
         type: multiselect

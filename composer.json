@@ -35,5 +35,6 @@
         "psr-4": {
             "Blockroll\\": "src/"
         }
-    }
+    },
+    "version": "0.1.0"
 }

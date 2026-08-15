@@ -52,7 +52,7 @@ $showXfn = $block->showXfn()->toBool(false) && !$isRss;
     <?php endif ?>
     <a class="u-url p-name" href="<?= esc($link['url'], 'attr') ?>" rel="<?= esc($rel, 'attr') ?>" target="_blank"><?= esc($name) ?></a>
     <?php if ($link['description'] !== ''): ?>
-      <p class="p-note"><?= esc($link['description']) ?></p>
+      <p class="p-note"><?= kti($link['description']) ?></p>
     <?php endif ?>
     <?php if ($showMeta): ?>
       <div class="blockroll-meta">

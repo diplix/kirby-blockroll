@@ -28,6 +28,7 @@
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  background: #fff;
 }
 
 .blockroll-blogroll .h-card .blockroll-no-photo {
@@ -37,6 +38,7 @@
 
 .blockroll-blogroll .h-card .u-url {
   grid-column: 2;
+  justify-self: start;
   font-weight: 600;
 }
 

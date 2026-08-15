@@ -1,0 +1,25 @@
+.k-blockroll-photo-field-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.k-blockroll-photo-field-preview img {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+}
+
+.k-blockroll-photo-field-preview__empty {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.12;
+}

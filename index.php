@@ -40,6 +40,8 @@ App::plugin('diplix/blockroll', [
         'proxyTimeout'  => 10,
         'proxyMaxBytes' => 512000,
         'proxyCache'    => null, // default: {kirby cache root}/blockroll-photos
+        // Save-hook Autofill can rewrite blocks; off by default until safer
+        'autoEnrich'    => false,
     ],
     'blueprints' => [
         'blocks/blogroll' => __DIR__ . '/blueprints/blocks/blogroll.yml',
@@ -56,9 +58,15 @@ App::plugin('diplix/blockroll', [
     'routes' => require __DIR__ . '/config/routes.php',
     'hooks' => [
         'page.update:after' => function (Page $newPage, Page $oldPage) {
+            if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
+                return;
+            }
             Autofill::enrichPage($newPage);
         },
         'page.create:after' => function (Page $page) {
+            if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
+                return;
+            }
             Autofill::enrichPage($page);
         },
         // Inject frontend CSS only when a blogroll block is present
