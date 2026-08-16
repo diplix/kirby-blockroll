@@ -38,8 +38,12 @@ $showXfn = $block->showXfn()->toBool(false) && !$isRss;
 $opmlPage = (!$isRss && $block->parent() instanceof \Kirby\Cms\Page)
     ? $block->parent()
     : null;
+$feedName = Opml::blockTitle($block);
 ?>
-<ul class="blockroll-blogroll">
+<ul class="h-feed blockroll-blogroll">
+  <li class="blockroll-feed-name">
+    <span class="p-name"><?= esc($feedName) ?></span>
+  </li>
 <?php foreach ($links as $link):
     $name = $link['name'] !== '' ? $link['name'] : $link['url'];
     $xfnRel = Xfn::relString($link['xfn']);
@@ -89,4 +93,3 @@ $opmlPage = (!$isRss && $block->parent() instanceof \Kirby\Cms\Page)
   <a href="<?= esc($opmlUrl, 'attr') ?>" download="<?= esc($opmlDownload, 'attr') ?>">Herunterladen</a> oder <a href="<?= esc($opmlUrl, 'attr') ?>">öffnen</a> dieser Blogroll als OPML-Datei.
 </p>
 <?php endif ?>
-

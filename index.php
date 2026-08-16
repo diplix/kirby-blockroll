@@ -43,6 +43,8 @@ App::plugin('diplix/blockroll', [
         'proxyCache'    => null, // default: {kirby cache root}/blockroll-photos
         // Save-hook Autofill can rewrite blocks; off by default until safer
         'autoEnrich'    => false,
+        // Browser/CDN max-age for OPML responses (seconds); file cache invalidates on content change
+        'opmlMaxAge'    => 3600,
     ],
     'blueprints' => [
         'blocks/blogroll' => __DIR__ . '/blueprints/blocks/blogroll.yml',
@@ -62,24 +64,33 @@ App::plugin('diplix/blockroll', [
     'routes' => require __DIR__ . '/config/routes.php',
     'hooks' => [
         'page.update:after' => function (Page $newPage, Page $oldPage) {
-            Opml::flushIndexCache();
+            Opml::flushCaches($newPage);
+            if ($oldPage instanceof Page && $oldPage->id() !== $newPage->id()) {
+                Opml::flushPageCache($oldPage);
+            }
             if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
                 return;
             }
             Autofill::enrichPage($newPage);
         },
         'page.create:after' => function (Page $page) {
-            Opml::flushIndexCache();
+            Opml::flushCaches($page);
             if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
                 return;
             }
             Autofill::enrichPage($page);
         },
-        'page.delete:after' => function () {
-            Opml::flushIndexCache();
+        'page.delete:after' => function ($page = null) {
+            Opml::flushCaches($page instanceof Page ? $page : null);
         },
-        'page.changeStatus:after' => function () {
-            Opml::flushIndexCache();
+        'page.changeStatus:after' => function ($newPage = null) {
+            Opml::flushCaches($newPage instanceof Page ? $newPage : null);
+        },
+        'page.changeSlug:after' => function ($newPage = null, $oldPage = null) {
+            Opml::flushCaches($newPage instanceof Page ? $newPage : null);
+            if ($oldPage instanceof Page) {
+                Opml::flushPageCache($oldPage);
+            }
         },
         // Inject CSS (when blogroll present) + rel="blogroll" discovery links
         'page.render:after' => function (string $contentType, array $data, string $html, $page) {

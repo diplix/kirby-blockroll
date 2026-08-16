@@ -14,18 +14,19 @@ use Throwable;
  */
 class Opml
 {
+    /** Default browser/CDN max-age for OPML responses (seconds). */
+    private const DEFAULT_MAX_AGE = 3600;
+
     /**
-     * Handle GET …?opml or /opml for the given path (empty = home).
+     * Handle GET …?opml for a page path (not home — home ?opml redirects to /opml).
      * Returns a Response, or null to continue routing.
      */
     public static function handle(?string $path): ?Response
     {
         $path = trim((string) $path, '/');
-        $kirby = App::instance();
 
-        // Dedicated directory URL
-        if ($path === 'opml') {
-            return self::directoryResponse();
+        if ($path === '' || $path === 'home' || $path === 'opml') {
+            return null;
         }
 
         $page = self::pageFromPath($path);
@@ -35,14 +36,6 @@ class Opml
 
         if (self::pageHasBlogroll($page)) {
             return self::pageResponse($page);
-        }
-
-        // Home without a blogroll block → directory of all blogrolls
-        if ($page->isHomePage()) {
-            $pages = self::blogrollPages();
-            if ($pages->count() > 0) {
-                return self::directoryResponse();
-            }
         }
 
         return null;
@@ -69,35 +62,53 @@ class Opml
 
     /**
      * OPML URL for a page (permalink + ?opml).
+     * Home page points at the canonical directory /opml.
      */
     public static function opmlUrl(Page $page): string
     {
+        if ($page->isHomePage()) {
+            return url('opml');
+        }
+
         $url = $page->url();
         return $url . (str_contains($url, '?') ? '&' : '?') . 'opml';
     }
 
+    /**
+     * Canonical directory URL.
+     */
+    public static function directoryUrl(): string
+    {
+        return url('opml');
+    }
+
+    /**
+     * Display / OPML title for a single blogroll block.
+     */
+    public static function blockTitle(\Kirby\Cms\Block $block): string
+    {
+        $name = trim((string) $block->content()->get('name')->value());
+        return $name !== '' ? $name : 'Blogroll';
+    }
+
+    /**
+     * Title for page-level OPML / discovery: block name(s), else page title.
+     * (No author suffix — that came from the page author field, not a hardcoded string.)
+     */
     public static function title(Page $page): string
     {
+        $names = [];
+        foreach (self::blocksOnPage($page) as $block) {
+            $names[] = self::blockTitle($block);
+        }
+
+        $names = array_values(array_unique(array_filter($names)));
+        if ($names !== []) {
+            return implode(', ', $names);
+        }
+
         $title = trim($page->title()->value());
-        if ($title === '') {
-            $title = 'Blogroll';
-        }
-
-        $author = '';
-        try {
-            $user = $page->author()->toUser();
-            if ($user) {
-                $author = trim($user->name()->value());
-            }
-        } catch (Throwable) {
-            // ignore
-        }
-
-        if ($author !== '') {
-            return $title . ' by ' . $author;
-        }
-
-        return $title;
+        return $title !== '' ? $title : 'Blogroll';
     }
 
     /**
@@ -192,7 +203,23 @@ class Opml
     }
 
     /**
-     * Drop the blogroll page index (call after content changes).
+     * Drop index + all OPML XML caches (call after content changes).
+     */
+    public static function flushCaches(?Page $page = null): void
+    {
+        self::flushIndexCache();
+        self::flushDirectoryCache();
+
+        if ($page instanceof Page) {
+            self::flushPageCache($page);
+            return;
+        }
+
+        self::flushAllPageCaches();
+    }
+
+    /**
+     * @deprecated Use flushCaches()
      */
     public static function flushIndexCache(): void
     {
@@ -202,9 +229,58 @@ class Opml
         }
     }
 
+    public static function flushDirectoryCache(): void
+    {
+        $file = self::directoryCacheFile();
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+
+    public static function flushPageCache(Page $page): void
+    {
+        $file = self::pageCacheFile($page);
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+
+    public static function flushAllPageCaches(): void
+    {
+        $dir = self::opmlCacheDir() . '/pages';
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        foreach (glob($dir . '/*.xml') ?: [] as $file) {
+            @unlink($file);
+        }
+    }
+
+    private static function cacheRoot(): string
+    {
+        return App::instance()->root('cache') . '/blockroll';
+    }
+
+    private static function opmlCacheDir(): string
+    {
+        return self::cacheRoot() . '/opml';
+    }
+
     private static function indexCacheFile(): string
     {
-        return App::instance()->root('cache') . '/blockroll/blogroll-page-ids.json';
+        return self::cacheRoot() . '/blogroll-page-ids.json';
+    }
+
+    private static function directoryCacheFile(): string
+    {
+        return self::opmlCacheDir() . '/directory.xml';
+    }
+
+    private static function pageCacheFile(Page $page): string
+    {
+        $key = hash('sha256', $page->id());
+        return self::opmlCacheDir() . '/pages/' . $key . '.xml';
     }
 
     /**
@@ -218,7 +294,6 @@ class Opml
         }
 
         $mtime = filemtime($file);
-        // Refresh at most daily; also flushed on page writes
         if ($mtime !== false && $mtime < time() - 86400) {
             return null;
         }
@@ -232,12 +307,66 @@ class Opml
      */
     private static function writeIndexCache(array $ids): void
     {
-        $file = self::indexCacheFile();
-        $dir = dirname($file);
+        self::ensureDir(dirname(self::indexCacheFile()));
+        self::writeAtomic(self::indexCacheFile(), json_encode(array_values($ids), JSON_UNESCAPED_SLASHES) ?: '[]');
+    }
+
+    private static function readXmlCache(string $file, ?int $mustBeNewerOrEqual = null): ?string
+    {
+        if (!is_file($file)) {
+            return null;
+        }
+
+        if ($mustBeNewerOrEqual !== null) {
+            $mtime = filemtime($file);
+            if ($mtime === false || $mtime < $mustBeNewerOrEqual) {
+                return null;
+            }
+        }
+
+        $xml = file_get_contents($file);
+        return is_string($xml) && $xml !== '' ? $xml : null;
+    }
+
+    private static function writeXmlCache(string $file, string $xml): void
+    {
+        self::ensureDir(dirname($file));
+        self::writeAtomic($file, $xml);
+    }
+
+    private static function ensureDir(string $dir): void
+    {
         if (!is_dir($dir)) {
             mkdir($dir, 0775, true);
         }
-        file_put_contents($file, json_encode(array_values($ids), JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function writeAtomic(string $file, string $contents): void
+    {
+        $tmp = $file . '.tmp.' . bin2hex(random_bytes(4));
+        if (file_put_contents($tmp, $contents) === false) {
+            return;
+        }
+        rename($tmp, $file);
+    }
+
+    private static function maxAge(): int
+    {
+        $age = App::instance()->option('diplix.blockroll.opmlMaxAge');
+        if ($age === null || $age === '') {
+            return self::DEFAULT_MAX_AGE;
+        }
+
+        return max(0, (int) $age);
+    }
+
+    private static function xmlResponse(string $xml): Response
+    {
+        $maxAge = self::maxAge();
+
+        return new Response($xml, 'text/xml', 200, [
+            'Cache-Control' => 'public, max-age=' . $maxAge,
+        ]);
     }
 
     /**
@@ -271,6 +400,14 @@ class Opml
 
     public static function pageResponse(Page $page): Response
     {
+        $cacheFile = self::pageCacheFile($page);
+        $modified = (int) $page->modified();
+        $cached = self::readXmlCache($cacheFile, $modified);
+
+        if ($cached !== null) {
+            return self::xmlResponse($cached);
+        }
+
         $links = self::linksFromPage($page);
         $xml = snippet('blockroll/opml', [
             'page'  => $page,
@@ -278,18 +415,37 @@ class Opml
             'title' => self::title($page),
         ], true);
 
-        return new Response($xml, 'text/xml', 200);
+        self::writeXmlCache($cacheFile, $xml);
+
+        return self::xmlResponse($xml);
     }
 
     public static function directoryResponse(): Response
     {
+        $cacheFile = self::directoryCacheFile();
+        $cached = self::readXmlCache($cacheFile);
+
+        if ($cached !== null) {
+            return self::xmlResponse($cached);
+        }
+
         $pages = self::blogrollPages();
         $xml = snippet('blockroll/opml-directory', [
             'pages' => $pages,
             'site'  => App::instance()->site(),
         ], true);
 
-        return new Response($xml, 'text/xml', 200);
+        self::writeXmlCache($cacheFile, $xml);
+
+        return self::xmlResponse($xml);
+    }
+
+    /**
+     * 301 to canonical directory /opml.
+     */
+    public static function redirectToDirectory(): Response
+    {
+        return Response::redirect(self::directoryUrl(), 301);
     }
 
     /**
@@ -303,14 +459,14 @@ class Opml
 
         $tags = [];
 
-        if (self::pageHasBlogroll($page)) {
+        if (self::pageHasBlogroll($page) && !$page->isHomePage()) {
             $tags[] = self::linkTag(self::opmlUrl($page), self::title($page));
         }
 
-        // Home: also advertise every blogroll page (like Upstream)
+        // Home: advertise every blogroll page (like Upstream), not /opml
         if ($page->isHomePage()) {
             foreach (self::blogrollPages() as $blogrollPage) {
-                if ($blogrollPage->is($page)) {
+                if ($blogrollPage->isHomePage()) {
                     continue;
                 }
                 $tags[] = self::linkTag(self::opmlUrl($blogrollPage), self::title($blogrollPage));
@@ -339,7 +495,6 @@ class Opml
             return '';
         }
 
-        // Strip KirbyTags roughly for attributes
         $text = preg_replace('/\([a-z0-9_-]+:.*?\)/si', '', $text) ?? $text;
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');

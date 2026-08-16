@@ -10,6 +10,24 @@
   padding: 0;
 }
 
+/* Beat site rule `.text ul { margin-left: 1rem }` */
+.text ul.blockroll-blogroll,
+.text ol.blockroll-blogroll,
+ul.blockroll-blogroll {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.blockroll-blogroll > .blockroll-feed-name {
+  display: block;
+  list-style: none;
+  margin: 0 0 0.85em;
+  padding: 0;
+  font-weight: 600;
+  font-size: 1.05em;
+  line-height: 1.3;
+}
+
 .blockroll-blogroll .h-card {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -29,6 +47,22 @@
   object-fit: cover;
   flex-shrink: 0;
   background: #fff;
+  transition:
+    width 0.25s ease,
+    height 0.25s ease,
+    max-width 0.25s ease,
+    max-height 0.25s ease,
+    margin 0.25s ease,
+    border-radius 0.25s ease,
+    flex-basis 0.25s ease,
+    background-color 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blockroll-blogroll .h-card .u-photo,
+  .blockroll-blogroll .h-card .blockroll-no-photo {
+    transition: none;
+  }
 }
 
 .blockroll-blogroll .h-card .blockroll-no-photo {
@@ -104,3 +138,62 @@
 .blockroll-opml a {
   color: inherit;
 }
+
+/* Mobile: 16×16 square favicon beside title; note/meta full width below (no gutter) */
+@media (max-width: 50rem) {
+  .blockroll-blogroll > .blockroll-feed-name {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-bottom: 0.5em;
+  }
+
+  .blockroll-blogroll .h-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.45em;
+    row-gap: 0.25em;
+  }
+
+  .blockroll-blogroll .h-card .u-photo,
+  .blockroll-blogroll .h-card .blockroll-no-photo {
+    float: none;
+    grid-row: auto;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    max-width: 16px;
+    max-height: 16px;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    object-fit: cover;
+    align-self: center;
+  }
+
+  .blockroll-blogroll .h-card .blockroll-no-photo {
+    background: currentcolor;
+    opacity: 0.15;
+  }
+
+  .blockroll-blogroll .h-card .u-url {
+    flex: 1 1 0;
+    min-width: 0;
+    grid-column: auto;
+    display: inline;
+    justify-self: auto;
+    align-self: center;
+    line-height: 1.25;
+  }
+
+  .blockroll-blogroll .h-card .p-note,
+  .blockroll-blogroll .h-card .blockroll-meta {
+    flex: 1 1 100%;
+    width: 100%;
+    clear: none;
+    grid-column: auto;
+    display: block;
+    margin-top: 0;
+  }
+}
+

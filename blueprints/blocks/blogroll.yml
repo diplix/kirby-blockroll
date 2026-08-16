@@ -3,6 +3,12 @@ icon: url
 wysiwyg: true
 preview: fields
 fields:
+  name:
+    label: Name
+    type: text
+    default: Blogroll
+    width: 1/2
+    help: Bezeichnung dieser Sammlung (Frontend p-name, OPML-Titel). Pro Block überschreibbar.
   links:
     label: Links
     type: structure

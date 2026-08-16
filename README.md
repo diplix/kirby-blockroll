@@ -96,7 +96,7 @@ A **directory** OPML lists every listed page that has a blogroll (each entry poi
 https://example.com/opml
 ```
 
-On the home page, `/?opml` serves that page’s OPML if the home page itself has a blogroll; otherwise it serves the directory.
+`/?opml` redirects with **301** to `/opml`. Page and directory OPML are file-cached under `site/cache/blockroll/opml/` and invalidated when pages change. Optional: `'diplix.blockroll.opmlMaxAge' => 3600` (browser `Cache-Control`, seconds).
 
 Discovery (same idea as Upstream): pages with a blogroll inject
 

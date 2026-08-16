@@ -28,7 +28,7 @@ return [
             return Opml::stylesheetResponse();
         },
     ],
-    // Directory of all blogroll pages (never advertised via rel="blogroll")
+    // Canonical directory of all blogroll pages
     [
         'pattern' => 'opml',
         'method'  => 'GET|HEAD',
@@ -36,7 +36,7 @@ return [
             return Opml::directoryResponse();
         },
     ],
-    // Home: /?opml
+    // Home /?opml → 301 /opml
     [
         'pattern' => '',
         'method'  => 'GET|HEAD',
@@ -45,7 +45,7 @@ return [
                 return $this->next();
             }
 
-            return Opml::handle('') ?? $this->next();
+            return Opml::redirectToDirectory();
         },
     ],
     // Any page: /path/to/page?opml
