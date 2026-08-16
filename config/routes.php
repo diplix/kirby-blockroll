@@ -15,10 +15,7 @@ return [
         'pattern' => 'blockroll/image',
         'method'  => 'GET',
         'action'  => function () {
-            return PhotoProxy::respond(
-                get('url'),
-                (bool) get('refresh')
-            );
+            return PhotoProxy::respond(get('url'), false);
         },
     ],
     [

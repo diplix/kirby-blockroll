@@ -46,6 +46,17 @@ class PhotoProxy
         return rtrim(App::instance()->root('cache'), '/') . '/blockroll-photos';
     }
 
+    /** Max age of on-disk avatars before re-fetch (default 4 weeks). */
+    public static function cacheTtl(): int
+    {
+        $ttl = App::instance()->option('diplix.blockroll.proxyCacheTtl');
+        if ($ttl === null || $ttl === '') {
+            return 60 * 60 * 24 * 28; // 4 weeks
+        }
+
+        return max(3600, (int) $ttl);
+    }
+
     /**
      * Same-origin proxy URL for a remote image, or the original when proxy is off.
      */
@@ -66,6 +77,8 @@ class PhotoProxy
 
     /**
      * Handle GET /blockroll/image?url=…
+     * Serves local disk cache; re-fetches at most every proxyCacheTtl (default 4 weeks).
+     * The ?refresh=1 query is ignored for anonymous traffic (local files persist).
      */
     public static function respond(?string $url, bool $refresh = false): Response
     {
@@ -74,36 +87,41 @@ class PhotoProxy
             return new Response('Bad Request', 'text/plain', 400);
         }
 
+        // Never force-refresh via public query string — avatars live on disk.
+        unset($refresh);
+
         $hash = md5($url);
         $size = self::size();
+        $ttl = self::cacheTtl();
         $dir = self::cacheRoot();
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
 
-        if (!$refresh) {
-            $cached = self::findCached($dir, $hash, $size);
-            if ($cached !== null) {
-                return self::fileResponse($cached);
-            }
-        } else {
-            self::clearCached($dir, $hash, $size);
+        $cached = self::findCached($dir, $hash, $size, $ttl);
+        if ($cached !== null) {
+            return self::fileResponse($cached, $ttl);
         }
 
         $fetched = self::fetch($url);
         if ($fetched === null) {
+            // Prefer serving a stale local file over redirecting to remote
+            $stale = self::findCached($dir, $hash, $size, null);
+            if ($stale !== null) {
+                return self::fileResponse($stale, $ttl);
+            }
+
             return new Response('', null, 302, ['Location' => $url]);
         }
 
         $processed = self::resize($fetched['data'], $fetched['type'], $size);
         if ($processed === null) {
-            // GD missing / unsupported format → store & serve original
             $ext = self::EXT_MAP[strtolower($fetched['type'])] ?? 'jpg';
             $path = $dir . '/' . $size . '_' . $hash . '.' . $ext;
             @file_put_contents($path, $fetched['data']);
 
             return new Response($fetched['data'], $fetched['type'], 200, [
-                'Cache-Control' => 'public, max-age=' . (60 * 60 * 24 * 30),
+                'Cache-Control' => 'public, max-age=' . $ttl,
             ]);
         }
 
@@ -111,7 +129,7 @@ class PhotoProxy
         @file_put_contents($path, $processed['data']);
 
         return new Response($processed['data'], $processed['type'], 200, [
-            'Cache-Control' => 'public, max-age=' . (60 * 60 * 24 * 30),
+            'Cache-Control' => 'public, max-age=' . $ttl,
         ]);
     }
 
@@ -130,13 +148,20 @@ class PhotoProxy
             || str_contains($url, 'linkembed/image');
     }
 
-    private static function findCached(string $dir, string $hash, int $size): ?string
+    private static function findCached(string $dir, string $hash, int $size, ?int $maxAge = null): ?string
     {
         $matches = glob($dir . '/' . $size . '_' . $hash . '.*') ?: [];
         foreach ($matches as $path) {
-            if (is_file($path)) {
-                return $path;
+            if (!is_file($path)) {
+                continue;
             }
+            if ($maxAge !== null) {
+                $mtime = filemtime($path);
+                if ($mtime === false || $mtime < time() - $maxAge) {
+                    continue; // expired — caller may re-fetch
+                }
+            }
+            return $path;
         }
         return null;
     }
@@ -146,7 +171,6 @@ class PhotoProxy
         foreach (glob($dir . '/' . $size . '_' . $hash . '.*') ?: [] as $path) {
             @unlink($path);
         }
-        // Also drop legacy unscaled cache files from earlier versions
         foreach (glob($dir . '/' . $hash . '.*') ?: [] as $path) {
             @unlink($path);
         }
@@ -280,15 +304,17 @@ class PhotoProxy
         return null;
     }
 
-    private static function fileResponse(string $path): Response
+    private static function fileResponse(string $path, ?int $maxAge = null): Response
     {
         $mime = mime_content_type($path) ?: 'image/jpeg';
         if (stripos($mime, 'image/') !== 0) {
             $mime = 'image/jpeg';
         }
 
+        $maxAge ??= self::cacheTtl();
+
         return new Response((string) file_get_contents($path), $mime, 200, [
-            'Cache-Control' => 'public, max-age=' . (60 * 60 * 24 * 30),
+            'Cache-Control' => 'public, max-age=' . $maxAge,
         ]);
     }
 }

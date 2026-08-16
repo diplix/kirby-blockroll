@@ -174,7 +174,7 @@ class Opml
 
     /**
      * Listed pages that contain at least one blogroll block.
-     * Result is cached (site index + block scan is expensive on large sites).
+     * Uses a persistent ID index (no daily expiry). Missing index is rebuilt under lock.
      */
     public static function blogrollPages(): Pages
     {
@@ -182,13 +182,7 @@ class Opml
         $ids = self::readIndexCache();
 
         if ($ids === null) {
-            $ids = [];
-            foreach ($kirby->site()->index()->listed() as $page) {
-                if (self::pageHasBlogroll($page)) {
-                    $ids[] = $page->id();
-                }
-            }
-            self::writeIndexCache($ids);
+            $ids = self::rebuildIndexLocked();
         }
 
         $pages = [];
@@ -203,30 +197,86 @@ class Opml
     }
 
     /**
-     * Drop index + all OPML XML caches (call after content changes).
+     * After page create/update/delete/status/slug: only touch caches when a blogroll is involved.
+     * Index is updated surgically (never wiped for unrelated page saves).
      */
-    public static function flushCaches(?Page $page = null): void
+    public static function onPageChanged(?Page $page, ?Page $previous = null): void
     {
-        self::flushIndexCache();
-        self::flushDirectoryCache();
-
+        $candidates = [];
         if ($page instanceof Page) {
-            self::flushPageCache($page);
+            $candidates[] = $page;
+        }
+        if ($previous instanceof Page) {
+            $candidates[] = $previous;
+        }
+
+        if ($candidates === []) {
             return;
         }
 
-        self::flushAllPageCaches();
+        $relevant = false;
+        foreach ($candidates as $candidate) {
+            if (self::pageHasBlogroll($candidate) || self::indexContains($candidate->id())) {
+                $relevant = true;
+                break;
+            }
+        }
+
+        if ($relevant === false) {
+            return;
+        }
+
+        if ($page instanceof Page) {
+            self::flushPageCache($page);
+            self::syncPageInIndex($page);
+        }
+
+        if ($previous instanceof Page && (!$page instanceof Page || $previous->id() !== $page->id())) {
+            self::flushPageCache($previous);
+            self::removeFromIndex($previous->id());
+        }
+
+        self::flushDirectoryCache();
+        self::scheduleWarmDirectory();
     }
 
     /**
-     * @deprecated Use flushCaches()
+     * Rebuild page-id index + directory OPML (for shutdown / maintenance).
+     */
+    public static function warmCaches(): void
+    {
+        self::rebuildIndexLocked(force: true);
+        self::flushDirectoryCache();
+        try {
+            self::directoryResponse();
+        } catch (Throwable) {
+            // ignore warm failures
+        }
+    }
+
+    /**
+     * Drop page/directory XML only (legacy). Prefer onPageChanged().
+     *
+     * @deprecated Use onPageChanged()
+     */
+    public static function flushCaches(?Page $page = null): void
+    {
+        if ($page instanceof Page) {
+            self::onPageChanged($page);
+            return;
+        }
+
+        self::flushDirectoryCache();
+        self::flushAllPageCaches();
+        self::scheduleWarmIndex();
+    }
+
+    /**
+     * @deprecated Use onPageChanged()
      */
     public static function flushIndexCache(): void
     {
-        $file = self::indexCacheFile();
-        if (is_file($file)) {
-            @unlink($file);
-        }
+        // Intentionally no longer deletes the persistent index.
     }
 
     public static function flushDirectoryCache(): void
@@ -255,6 +305,167 @@ class Opml
         foreach (glob($dir . '/*.xml') ?: [] as $file) {
             @unlink($file);
         }
+    }
+
+    private static function indexContains(string $id): bool
+    {
+        $ids = self::readIndexCache();
+        return is_array($ids) && in_array($id, $ids, true);
+    }
+
+    private static function syncPageInIndex(Page $page): void
+    {
+        $ids = self::readIndexCache();
+        if ($ids === null) {
+            self::scheduleWarmIndex();
+            return;
+        }
+
+        $shouldList = $page->isListed() && self::pageHasBlogroll($page);
+        $id = $page->id();
+        $has = in_array($id, $ids, true);
+
+        if ($shouldList && !$has) {
+            $ids[] = $id;
+            self::writeIndexCache($ids);
+        } elseif (!$shouldList && $has) {
+            self::removeFromIndex($id);
+        }
+    }
+
+    private static function removeFromIndex(string $id): void
+    {
+        $ids = self::readIndexCache();
+        if ($ids === null) {
+            return;
+        }
+
+        $next = array_values(array_filter($ids, static fn (string $x): bool => $x !== $id));
+        if (count($next) !== count($ids)) {
+            self::writeIndexCache($next);
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function scanBlogrollPageIds(): array
+    {
+        $ids = [];
+        foreach (App::instance()->site()->index()->listed() as $page) {
+            if (self::pageHasBlogroll($page)) {
+                $ids[] = $page->id();
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function rebuildIndexLocked(bool $force = false): array
+    {
+        self::ensureDir(self::cacheRoot());
+        $lockFile = self::cacheRoot() . '/index.lock';
+        $fp = @fopen($lockFile, 'c+');
+        if ($fp === false) {
+            $ids = self::scanBlogrollPageIds();
+            self::writeIndexCache($ids);
+            return $ids;
+        }
+
+        if (flock($fp, LOCK_EX | LOCK_NB)) {
+            try {
+                if ($force === false) {
+                    $existing = self::readIndexCache();
+                    if ($existing !== null) {
+                        return $existing;
+                    }
+                }
+                $ids = self::scanBlogrollPageIds();
+                self::writeIndexCache($ids);
+                return $ids;
+            } finally {
+                flock($fp, LOCK_UN);
+                fclose($fp);
+            }
+        }
+
+        // Another worker is rebuilding — wait up to ~90s for the file
+        for ($i = 0; $i < 900; $i++) {
+            usleep(100000);
+            $ids = self::readIndexCache();
+            if ($ids !== null) {
+                fclose($fp);
+                return $ids;
+            }
+        }
+
+        fclose($fp);
+        return [];
+    }
+
+    /**
+     * Page was deleted: drop from index / page OPML if it was a blogroll page.
+     */
+    public static function onPageDeleted(Page $page): void
+    {
+        if (!self::pageHasBlogroll($page) && !self::indexContains($page->id())) {
+            return;
+        }
+
+        self::flushPageCache($page);
+        self::removeFromIndex($page->id());
+        self::flushDirectoryCache();
+        self::scheduleWarmDirectory();
+    }
+
+    private static function scheduleWarmIndex(): void
+    {
+        self::scheduleAfterResponse(static function (): void {
+            self::rebuildIndexLocked(force: true);
+            self::flushDirectoryCache();
+            try {
+                self::directoryResponse();
+            } catch (Throwable) {
+            }
+        });
+    }
+
+    private static function scheduleWarmDirectory(): void
+    {
+        self::scheduleAfterResponse(static function (): void {
+            try {
+                self::directoryResponse();
+            } catch (Throwable) {
+            }
+        });
+    }
+
+    private static function scheduleAfterResponse(callable $callback): void
+    {
+        static $queue = [];
+        static $registered = false;
+
+        $queue[] = $callback;
+        if ($registered) {
+            return;
+        }
+        $registered = true;
+
+        register_shutdown_function(static function () use (&$queue): void {
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            foreach ($queue as $cb) {
+                try {
+                    $cb();
+                } catch (Throwable) {
+                }
+            }
+            $queue = [];
+        });
     }
 
     private static function cacheRoot(): string
@@ -290,11 +501,6 @@ class Opml
     {
         $file = self::indexCacheFile();
         if (!is_file($file)) {
-            return null;
-        }
-
-        $mtime = filemtime($file);
-        if ($mtime !== false && $mtime < time() - 86400) {
             return null;
         }
 

@@ -41,9 +41,11 @@ App::plugin('diplix/blockroll', [
         'proxyTimeout'  => 10,
         'proxyMaxBytes' => 512000,
         'proxyCache'    => null, // default: {kirby cache root}/blockroll-photos
+        // Re-fetch local avatars at most every N seconds (default 28 days)
+        'proxyCacheTtl' => 2419200,
         // Save-hook Autofill can rewrite blocks; off by default until safer
         'autoEnrich'    => false,
-        // Browser/CDN max-age for OPML responses (seconds); file cache invalidates on content change
+        // Browser/CDN max-age for OPML responses (seconds)
         'opmlMaxAge'    => 3600,
     ],
     'blueprints' => [
@@ -64,33 +66,35 @@ App::plugin('diplix/blockroll', [
     'routes' => require __DIR__ . '/config/routes.php',
     'hooks' => [
         'page.update:after' => function (Page $newPage, Page $oldPage) {
-            Opml::flushCaches($newPage);
-            if ($oldPage instanceof Page && $oldPage->id() !== $newPage->id()) {
-                Opml::flushPageCache($oldPage);
-            }
+            Opml::onPageChanged($newPage, $oldPage);
             if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
                 return;
             }
             Autofill::enrichPage($newPage);
         },
         'page.create:after' => function (Page $page) {
-            Opml::flushCaches($page);
+            Opml::onPageChanged($page);
             if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
                 return;
             }
             Autofill::enrichPage($page);
         },
-        'page.delete:after' => function ($page = null) {
-            Opml::flushCaches($page instanceof Page ? $page : null);
+        'page.delete:after' => function ($status, $page = null) {
+            if ($page instanceof Page) {
+                Opml::onPageDeleted($page);
+            }
         },
-        'page.changeStatus:after' => function ($newPage = null) {
-            Opml::flushCaches($newPage instanceof Page ? $newPage : null);
+        'page.changeStatus:after' => function ($newPage = null, $oldPage = null) {
+            Opml::onPageChanged(
+                $newPage instanceof Page ? $newPage : null,
+                $oldPage instanceof Page ? $oldPage : null
+            );
         },
         'page.changeSlug:after' => function ($newPage = null, $oldPage = null) {
-            Opml::flushCaches($newPage instanceof Page ? $newPage : null);
-            if ($oldPage instanceof Page) {
-                Opml::flushPageCache($oldPage);
-            }
+            Opml::onPageChanged(
+                $newPage instanceof Page ? $newPage : null,
+                $oldPage instanceof Page ? $oldPage : null
+            );
         },
         // Inject CSS (when blogroll present) + rel="blogroll" discovery links
         'page.render:after' => function (string $contentType, array $data, string $html, $page) {
