@@ -18,9 +18,7 @@ ul.blockroll-blogroll {
   padding-left: 0;
 }
 
-.blockroll-blogroll > .blockroll-feed-name {
-  display: block;
-  list-style: none;
+.blockroll > .blockroll-feed-name {
   margin: 0 0 0.85em;
   padding: 0;
   font-weight: 600;
@@ -141,9 +139,7 @@ ul.blockroll-blogroll {
 
 /* Mobile: 16×16 square favicon beside title; note/meta full width below (no gutter) */
 @media (max-width: 50rem) {
-  .blockroll-blogroll > .blockroll-feed-name {
-    flex: 1 1 100%;
-    width: 100%;
+  .blockroll > .blockroll-feed-name {
     margin-bottom: 0.5em;
   }
 
