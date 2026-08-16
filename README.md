@@ -10,19 +10,20 @@ Inspired by / adapted from [pfefferle/wordpress-blockroll](https://github.com/pf
 
 - Block `blogroll` with a structure of links stored **in the block** (any number of independent blogrolls on different pages)
 - URL discovery: feed (`rel=alternate`), name (h-card `p-name` → `og:title` → `<title>`), description (h-card `p-note` → meta description), photo (h-card → favicon)
-- Autofill on page save (only empty fields)
+- Autofill on page save (only empty fields; off by default via `autoEnrich`)
 - Panel API: `POST /api/blockroll/discover` with `{ "url": "…" }`
 - `active` toggle (default on)
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / manual
 - Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present
 - Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` caches avatars under `site/cache/blockroll-photos`
+- **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml`)
+- **`<link rel="blogroll">`** discovery in the document head
 - No frontend JavaScript
 
 ## Not in v1 (planned later)
 
-- OPML export / import
-- Aggregation / `<link rel="blogroll">` discovery
-- Visitor-facing sort/paging query params
+- OPML import
+- Aggregation / visitor-facing sort/paging query params
 
 ## Installation
 
@@ -74,8 +75,36 @@ fields:
 
 1. Add a **Blogroll** block.
 2. Add a link row, set **URL**, leave name/description empty if you want autofill.
-3. Save the page — discover runs for incomplete rows.
+3. Save the page — discover runs for incomplete rows (when `autoEnrich` is enabled).
 4. Edit any field afterwards; subsequent saves will not overwrite filled fields.
+
+### OPML
+
+Each page that contains a blogroll block exposes an OPML 2.0 feed of its **active** links:
+
+```
+https://example.com/your-page?opml
+```
+
+Outlines use `type="rss"` with `htmlUrl`, optional `xmlUrl` (feed), `text`, and `description`.
+
+In the browser, OPML documents are styled via Upstream’s `opml.xsl` (served at `/blockroll/opml.xsl` and referenced with `<?xml-stylesheet …?>`).
+
+A **directory** OPML lists every listed page that has a blogroll (each entry points at that page’s `?opml`):
+
+```
+https://example.com/opml
+```
+
+On the home page, `/?opml` serves that page’s OPML if the home page itself has a blogroll; otherwise it serves the directory.
+
+Discovery (same idea as Upstream): pages with a blogroll inject
+
+```html
+<link rel="blogroll" type="text/xml" href="…?opml" title="…">
+```
+
+into `<head>`. The home page also advertises every other blogroll page. The directory URL `/opml` is **not** advertised via `rel="blogroll"`.
 
 ### Panel API
 
@@ -115,6 +144,9 @@ In `site/config/config.php`:
 'diplix.blockroll.proxyTimeout'  => 10,      // fetch timeout (seconds)
 'diplix.blockroll.proxyMaxBytes' => 512000,  // reject larger responses
 // 'diplix.blockroll.proxyCache' => '/absolute/path/to/cache',
+
+// Autofill empty fields on page save (default off)
+'diplix.blockroll.autoEnrich' => false,
 ```
 
 With `proxyPhotos`, remote avatar URLs are rewritten to a same-origin route that fetches once, center-crops to a square, scales to `proxySize` (default **96×96** for retina), stores the file under the Kirby cache (`blockroll-photos/`), and serves it with a long cache header. Failures redirect to the original URL. Local/`data:` URLs are unchanged. Requires PHP GD; without GD the original image is cached as-is.
@@ -123,4 +155,4 @@ With `proxyPhotos`, remote avatar URLs are rewritten to a same-origin route that
 
 GPL-2.0-or-later. See [LICENSE](LICENSE).
 
-Discovery and XFN helpers are adapted from [pfefferle/wordpress-blockroll](https://github.com/pfefferle/wordpress-blockroll).
+Discovery, XFN and OPML helpers are adapted from [pfefferle/wordpress-blockroll](https://github.com/pfefferle/wordpress-blockroll).

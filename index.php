@@ -13,6 +13,7 @@
  */
 
 use Blockroll\Autofill;
+use Blockroll\Opml;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
 
@@ -47,10 +48,13 @@ App::plugin('diplix/blockroll', [
         'blocks/blogroll' => __DIR__ . '/blueprints/blocks/blogroll.yml',
     ],
     'snippets' => [
-        'blocks/blogroll' => __DIR__ . '/snippets/blocks/blogroll.php',
+        'blocks/blogroll'           => __DIR__ . '/snippets/blocks/blogroll.php',
+        'blockroll/opml'            => __DIR__ . '/snippets/opml.php',
+        'blockroll/opml-directory'  => __DIR__ . '/snippets/opml-directory.php',
     ],
     'assets' => [
         'blockroll.css' => __DIR__ . '/assets/blockroll.css',
+        'opml.xsl'      => __DIR__ . '/assets/opml.xsl',
     ],
     'api' => [
         'routes' => require __DIR__ . '/config/api.php',
@@ -58,31 +62,47 @@ App::plugin('diplix/blockroll', [
     'routes' => require __DIR__ . '/config/routes.php',
     'hooks' => [
         'page.update:after' => function (Page $newPage, Page $oldPage) {
+            Opml::flushIndexCache();
             if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
                 return;
             }
             Autofill::enrichPage($newPage);
         },
         'page.create:after' => function (Page $page) {
+            Opml::flushIndexCache();
             if (App::instance()->option('diplix.blockroll.autoEnrich') !== true) {
                 return;
             }
             Autofill::enrichPage($page);
         },
-        // Inject frontend CSS only when a blogroll block is present
+        'page.delete:after' => function () {
+            Opml::flushIndexCache();
+        },
+        'page.changeStatus:after' => function () {
+            Opml::flushIndexCache();
+        },
+        // Inject CSS (when blogroll present) + rel="blogroll" discovery links
         'page.render:after' => function (string $contentType, array $data, string $html, $page) {
-            if (
-                $contentType !== 'html' ||
-                str_contains($html, 'blockroll-blogroll') === false ||
-                ($head = strpos($html, '</head>')) === false
-            ) {
+            if ($contentType !== 'html' || ($head = strpos($html, '</head>')) === false) {
                 return $html;
             }
 
-            $url = $this->plugin('diplix/blockroll')->asset('blockroll.css')->url();
-            $tag = '<link rel="stylesheet" href="' . $url . '">' . PHP_EOL;
+            $tags = '';
 
-            return substr_replace($html, $tag, $head, 0);
+            if (str_contains($html, 'blockroll-blogroll')) {
+                $url = $this->plugin('diplix/blockroll')->asset('blockroll.css')->url();
+                $tags .= '<link rel="stylesheet" href="' . $url . '">' . PHP_EOL;
+            }
+
+            if ($page instanceof Page) {
+                $tags .= Opml::discoveryTags($page);
+            }
+
+            if ($tags === '') {
+                return $html;
+            }
+
+            return substr_replace($html, $tags, $head, 0);
         },
     ],
 ]);

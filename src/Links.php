@@ -38,7 +38,7 @@ class Links
             'url'         => trim((string) ($link['url'] ?? '')),
             'name'        => trim((string) ($link['name'] ?? '')),
             'description' => trim((string) ($link['description'] ?? '')),
-            'feedUrl'     => trim((string) ($link['feedUrl'] ?? '')),
+            'feedUrl'     => trim((string) ($link['feedUrl'] ?? $link['feedurl'] ?? '')),
             'photo'       => trim((string) ($link['photo'] ?? '')),
             'xfn'         => Xfn::sanitize($xfn),
             'added'       => trim((string) ($link['added'] ?? '')),
