@@ -59,7 +59,7 @@ $feedName = Opml::blockTitle($block);
       <?php endif ?>
       <a class="u-url p-name" href="<?= esc($link['url'], 'attr') ?>" rel="<?= esc($rel, 'attr') ?>" target="_blank"><?= esc($name) ?></a>
       <?php if ($link['description'] !== ''): ?>
-        <p class="p-note"><?= kti($link['description']) ?></p>
+        <div class="p-note"><?= kt($link['description']) ?></div>
       <?php endif ?>
       <?php if ($showMeta): ?>
         <div class="blockroll-meta">

@@ -28,9 +28,10 @@ fields:
     fields:
       url:
         label: URL
-        type: url
+        type: blockroll-url
         required: true
         width: 1/2
+        help: Nach dem Einfügen auf Discover klicken — leere Felder werden befüllt.
       active:
         label: Aktiv
         type: toggle
@@ -40,7 +41,7 @@ fields:
         label: Name
         type: text
         width: 1/2
-        help: Leer lassen → wird beim Speichern per Discover befüllt (wenn Autofill aktiv)
+        help: Leer lassen und Discover nutzen
       feedUrl:
         label: Feed-URL
         type: url

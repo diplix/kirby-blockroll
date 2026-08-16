@@ -11,6 +11,7 @@ Inspired by / adapted from [pfefferle/wordpress-blockroll](https://github.com/pf
 - Block `blogroll` with a structure of links stored **in the block** (any number of independent blogrolls on different pages)
 - URL discovery: feed (`rel=alternate`), name (h-card `p-name` → `og:title` → `<title>`), description (h-card `p-note` → meta description), photo (h-card → favicon)
 - Autofill on page save (only empty fields; off by default via `autoEnrich`)
+- Panel **Discover** button on each link URL (fills empty name / feed / description / photo via `POST /api/blockroll/discover`)
 - Panel API: `POST /api/blockroll/discover` with `{ "url": "…" }`
 - `active` toggle (default on)
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / manual
@@ -109,6 +110,13 @@ into `<head>`. The home page also advertises every other blogroll page. The dire
 ### Panel API
 
 Authenticated Panel users can call:
+
+```http
+POST /api/blockroll/discover
+{ "url": "https://example.com" }
+```
+
+The blogroll URL field (`blockroll-url`) has a **Discover** button that calls this endpoint and fills empty sibling fields in the structure entry.
 
 ```http
 POST /api/blockroll/discover

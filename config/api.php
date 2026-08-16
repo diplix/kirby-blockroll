@@ -20,10 +20,13 @@ return [
             }
 
             $data = Discovery::fromUrl($url);
+            $error = isset($data['error']) ? (string) $data['error'] : '';
+            unset($data['error']);
 
             return [
-                'status' => 'ok',
-                'data'   => $data,
+                'status'  => $error !== '' ? 'error' : 'ok',
+                'message' => $error !== '' ? $error : null,
+                'data'    => $data,
             ];
         },
     ],

@@ -1,6 +1,5 @@
 /**
- * Panel: structure table shows photo URL fields as thumbnails.
- * Editor stays a normal URL input (preview components are table-only).
+ * Panel: avatar thumbnails in structure table + Discover button on URL field.
  */
 panel.plugin("diplix/blockroll", {
   components: {
@@ -44,6 +43,168 @@ panel.plugin("diplix/blockroll", {
             rel="noopener noreferrer"
           >{{ raw }}</a>
         </div>
+      `,
+    },
+  },
+  fields: {
+    "blockroll-url": {
+      extends: "k-url-field",
+      data() {
+        return {
+          busy: false,
+        };
+      },
+      methods: {
+        findFieldset() {
+          let parent = this.$parent;
+          while (parent) {
+            const value = parent.value;
+            if (
+              value &&
+              typeof value === "object" &&
+              !Array.isArray(value) &&
+              Object.prototype.hasOwnProperty.call(value, "url") &&
+              parent.fields &&
+              typeof parent.fields === "object"
+            ) {
+              return parent;
+            }
+            parent = parent.$parent;
+          }
+          return null;
+        },
+        resolveFieldKey(fieldset, name) {
+          const value = fieldset.value || {};
+          const fields = fieldset.fields || {};
+          if (Object.prototype.hasOwnProperty.call(value, name)) {
+            return name;
+          }
+          if (Object.prototype.hasOwnProperty.call(fields, name)) {
+            return name;
+          }
+          const lower = name.toLowerCase();
+          const fromValue = Object.keys(value).find(
+            (key) => key.toLowerCase() === lower
+          );
+          if (fromValue) {
+            return fromValue;
+          }
+          const fromFields = Object.keys(fields).find(
+            (key) => key.toLowerCase() === lower
+          );
+          return fromFields || lower;
+        },
+        applyDiscovered(data) {
+          const fieldset = this.findFieldset();
+          if (!fieldset) {
+            this.$panel.notification.error(
+              "Discover: Formular nicht gefunden — Felder bitte manuell prüfen."
+            );
+            return 0;
+          }
+
+          const next = { ...fieldset.value };
+          const keys = ["name", "description", "feedUrl", "photo"];
+          let filled = 0;
+
+          for (const key of keys) {
+            const incoming = (data?.[key] || "").toString().trim();
+            if (!incoming) {
+              continue;
+            }
+            const target = this.resolveFieldKey(fieldset, key);
+            const current = (next[target] || "").toString().trim();
+            if (current === "") {
+              next[target] = incoming;
+              filled++;
+            }
+          }
+
+          if (filled > 0) {
+            fieldset.$emit("input", next);
+          }
+
+          return filled;
+        },
+        async discover() {
+          const url = (this.value || "").toString().trim();
+          if (!url || this.busy) {
+            return;
+          }
+
+          this.busy = true;
+          try {
+            const response = await this.$api.post("blockroll/discover", { url });
+            const data = response?.data || {};
+            const apiError =
+              response?.status === "error"
+                ? response?.message || "Discover fehlgeschlagen"
+                : null;
+            const filled = this.applyDiscovered(data);
+            const empty =
+              !data.name &&
+              !data.description &&
+              !data.feedUrl &&
+              !data.photo;
+
+            if (filled > 0) {
+              this.$panel.notification.success(
+                filled === 1
+                  ? "1 Feld befüllt"
+                  : filled + " Felder befüllt"
+              );
+            } else if (apiError) {
+              this.$panel.notification.error(apiError);
+            } else if (empty) {
+              this.$panel.notification.error(
+                "Keine Metadaten gefunden — URL prüfen oder Felder manuell füllen."
+              );
+            } else {
+              this.$panel.notification.info(
+                "Alle Felder waren schon befüllt — nichts geändert."
+              );
+            }
+          } catch (error) {
+            const message =
+              error?.message ||
+              error?.response?.message ||
+              "Discover fehlgeschlagen";
+            this.$panel.notification.error(message);
+          } finally {
+            this.busy = false;
+          }
+        },
+      },
+      template: `
+        <k-field
+          v-bind="$props"
+          :input="id"
+          class="k-url-field k-blockroll-url-field"
+        >
+          <div class="k-blockroll-url-field__row">
+            <k-input
+              :id="id"
+              ref="input"
+              type="url"
+              theme="field"
+              :value="value"
+              :required="required"
+              :disabled="disabled"
+              :placeholder="placeholder"
+              @input="$emit('input', $event)"
+            />
+            <k-button
+              class="k-blockroll-url-field__discover"
+              type="button"
+              variant="filled"
+              size="sm"
+              icon="search"
+              :disabled="busy || !(value || '').toString().trim()"
+              :text="busy ? '…' : 'Discover'"
+              @click="discover"
+            />
+          </div>
+        </k-field>
       `,
     },
   },

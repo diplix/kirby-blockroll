@@ -19,7 +19,9 @@ class Discovery
     /**
      * Fetch a URL and extract link details.
      *
-     * @return array{name: string, description: string, feedUrl: string, photo: string}
+     * Retries on HTTP 429/503 (Tumblr and others rate-limit scrapers).
+     *
+     * @return array{name: string, description: string, feedUrl: string, photo: string, error?: string}
      */
     public static function fromUrl(string $url): array
     {
@@ -32,33 +34,68 @@ class Discovery
 
         $url = trim($url);
         if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
-            return $empty;
+            return $empty + ['error' => 'Ungültige URL'];
         }
 
         $timeout = (int) (App::instance()->option('diplix.blockroll.discoverTimeout') ?? 8);
+        $attempts = max(1, (int) (App::instance()->option('diplix.blockroll.discoverRetries') ?? 3));
+        $lastCode = 0;
+        $lastError = null;
 
-        try {
-            $response = Remote::get($url, [
-                'timeout' => $timeout,
-                'headers' => [
-                    'User-Agent' => 'Kirby-Blockroll/1.0 (+https://getkirby.com)',
-                    'Accept'     => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
-                ],
-            ]);
-        } catch (Throwable) {
-            return $empty;
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                $response = Remote::get($url, [
+                    'timeout' => $timeout,
+                    'headers' => [
+                        // Identify politely; some hosts (Tumblr) rate-limit anonymous bots harder
+                        'User-Agent'      => 'Mozilla/5.0 (compatible; Kirby-Blockroll/1.0; +https://github.com/diplix/kirby-blockroll)',
+                        'Accept'          => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language' => 'en-US,en;q=0.8,de;q=0.7',
+                    ],
+                ]);
+            } catch (Throwable $e) {
+                $lastError = $e->getMessage() ?: 'Netzwerkfehler';
+                if ($attempt < $attempts) {
+                    usleep(400000 * $attempt);
+                    continue;
+                }
+                return $empty + ['error' => $lastError];
+            }
+
+            $lastCode = (int) $response->code();
+
+            if ($lastCode === 429 || $lastCode === 503) {
+                $lastError = 'HTTP ' . $lastCode . ' (Rate-Limit) — bitte erneut versuchen';
+                if ($attempt < $attempts) {
+                    usleep(700000 * $attempt);
+                    continue;
+                }
+                return $empty + ['error' => $lastError];
+            }
+
+            if ($lastCode < 200 || $lastCode >= 400) {
+                return $empty + ['error' => 'HTTP ' . $lastCode . ' beim Abruf'];
+            }
+
+            $finalUrl = $response->info()['url'] ?? $url;
+            if (!is_string($finalUrl) || $finalUrl === '') {
+                $finalUrl = $url;
+            }
+
+            $parsed = self::fromHtml((string) $response->content(), $finalUrl);
+            if (
+                $parsed['name'] === ''
+                && $parsed['description'] === ''
+                && $parsed['feedUrl'] === ''
+                && $parsed['photo'] === ''
+            ) {
+                $parsed['error'] = 'Seite geladen, aber keine Metadaten gefunden';
+            }
+
+            return $parsed;
         }
 
-        if ($response->code() < 200 || $response->code() >= 400) {
-            return $empty;
-        }
-
-        $finalUrl = $response->info()['url'] ?? $url;
-        if (!is_string($finalUrl) || $finalUrl === '') {
-            $finalUrl = $url;
-        }
-
-        return self::fromHtml((string) $response->content(), $finalUrl);
+        return $empty + ['error' => $lastError ?: ('HTTP ' . $lastCode)];
     }
 
     /**
@@ -95,7 +132,9 @@ class Discovery
             }
         }
 
-        $hcard = self::findByClass($xpath, null, 'h-card');
+        // Only use an h-card that represents this site (u-url same host).
+        // Avoids picking blogroll/sidebar cards on large homepages.
+        $hcard = self::representativeHcard($xpath, $baseUrl);
         if ($hcard !== null) {
             $result['name'] = self::hcardText($xpath, $hcard, 'p-name');
             $result['description'] = self::hcardText($xpath, $hcard, 'p-note');
@@ -112,9 +151,20 @@ class Discovery
         }
 
         if ($result['description'] === '') {
+            $result['description'] = self::metaProperty($xpath, 'og:description');
+        }
+
+        if ($result['description'] === '') {
             foreach ($xpath->query('//meta[@name="description"][@content]') as $node) {
                 $result['description'] = self::sanitizeText($node->getAttribute('content'));
                 break;
+            }
+        }
+
+        if ($result['photo'] === '') {
+            $result['photo'] = self::metaProperty($xpath, 'og:image');
+            if ($result['photo'] !== '') {
+                $result['photo'] = self::absolute($result['photo'], $baseUrl);
             }
         }
 
@@ -127,7 +177,74 @@ class Discovery
             }
         }
 
+        // Prefer page title over a bare URL used as p-name
+        if ($result['name'] !== '' && filter_var($result['name'], FILTER_VALIDATE_URL)) {
+            $og = self::metaProperty($xpath, 'og:title');
+            if ($og !== '') {
+                $result['name'] = $og;
+            } else {
+                $title = $xpath->query('//title')->item(0);
+                $fromTitle = $title ? self::sanitizeText($title->textContent ?? '') : '';
+                if ($fromTitle !== '') {
+                    $result['name'] = $fromTitle;
+                }
+            }
+        }
+
         return $result;
+    }
+
+    /**
+     * Prefer an h-card whose u-url points at the same site as $baseUrl.
+     * Skips cards inside a blockroll list (common on sites that embed their own roll).
+     */
+    private static function representativeHcard(DOMXPath $xpath, string $baseUrl): ?DOMNode
+    {
+        foreach ($xpath->query('//*[@class]') as $node) {
+            if (!self::hasToken($node->getAttribute('class'), 'h-card')) {
+                continue;
+            }
+
+            if (self::isInsideBlockroll($node)) {
+                continue;
+            }
+
+            $cardUrl = self::hcardUrl($xpath, $node, 'u-url', $baseUrl);
+            if ($cardUrl !== '' && self::sameHost($cardUrl, $baseUrl)) {
+                return $node;
+            }
+        }
+
+        return null;
+    }
+
+    private static function isInsideBlockroll(DOMNode $node): bool
+    {
+        for ($current = $node; $current; $current = $current->parentNode) {
+            if (!$current instanceof \DOMElement) {
+                continue;
+            }
+            $class = $current->getAttribute('class');
+            if (
+                self::hasToken($class, 'blockroll')
+                || self::hasToken($class, 'blockroll-blogroll')
+                || self::hasToken($class, 'blockroll-entry')
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function sameHost(string $a, string $b): bool
+    {
+        $ha = strtolower((string) (parse_url($a, PHP_URL_HOST) ?? ''));
+        $hb = strtolower((string) (parse_url($b, PHP_URL_HOST) ?? ''));
+        $ha = preg_replace('#^www\.#', '', $ha) ?? $ha;
+        $hb = preg_replace('#^www\.#', '', $hb) ?? $hb;
+
+        return $ha !== '' && $ha === $hb;
     }
 
     private static function hasToken(string $value, string $token): bool

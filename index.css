@@ -23,3 +23,19 @@
   background: currentColor;
   opacity: 0.12;
 }
+
+.k-blockroll-url-field__row {
+  display: flex;
+  gap: var(--spacing-2, 0.5rem);
+  align-items: stretch;
+}
+
+.k-blockroll-url-field__row .k-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.k-blockroll-url-field__discover {
+  flex: 0 0 auto;
+  align-self: stretch;
+}

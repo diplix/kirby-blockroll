@@ -81,6 +81,25 @@ ul.blockroll-blogroll {
   font-size: 0.875em;
 }
 
+.blockroll-blogroll .h-card .p-note > :first-child {
+  margin-top: 0;
+}
+
+.blockroll-blogroll .h-card .p-note > :last-child {
+  margin-bottom: 0;
+}
+
+.blockroll-blogroll .h-card .p-note blockquote {
+  margin: 0.35em 0;
+  padding-left: 0.75em;
+  border-left: 2px solid currentColor;
+  opacity: 0.9;
+}
+
+.blockroll-blogroll .h-card .p-note p {
+  margin: 0.35em 0;
+}
+
 .blockroll-blogroll .h-card .blockroll-meta {
   display: flex;
   flex-wrap: wrap;

@@ -35,6 +35,7 @@ if (!class_exists(\Blockroll\Discovery::class)) {
 App::plugin('diplix/blockroll', [
     'options' => [
         'discoverTimeout' => 8,
+        'discoverRetries' => 3,
         // Cache remote avatars via GET /blockroll/image?url=… (site/cache/blockroll-photos)
         'proxyPhotos'   => false,
         'proxySize'     => 96, // px square (2× retina for ~48px CSS avatars)
@@ -50,6 +51,12 @@ App::plugin('diplix/blockroll', [
     ],
     'blueprints' => [
         'blocks/blogroll' => __DIR__ . '/blueprints/blocks/blogroll.yml',
+    ],
+    'fields' => [
+        // URL field with Discover button (fills empty sibling fields via API)
+        'blockroll-url' => [
+            'extends' => 'url',
+        ],
     ],
     'snippets' => [
         'blocks/blogroll'           => __DIR__ . '/snippets/blocks/blogroll.php',
