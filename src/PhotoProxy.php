@@ -46,7 +46,7 @@ class PhotoProxy
         return rtrim(App::instance()->root('cache'), '/') . '/blockroll-photos';
     }
 
-    /** Max age of on-disk avatars before re-fetch (default 4 weeks). */
+    /** Max age of on-disk avatars before re-fetch (default 4 weeks). `0` = never re-fetch. */
     public static function cacheTtl(): int
     {
         $ttl = App::instance()->option('diplix.blockroll.proxyCacheTtl');
@@ -54,7 +54,21 @@ class PhotoProxy
             return 60 * 60 * 24 * 28; // 4 weeks
         }
 
-        return max(3600, (int) $ttl);
+        $ttl = (int) $ttl;
+        if ($ttl <= 0) {
+            return 0; // keep forever once fetched
+        }
+
+        return max(3600, $ttl);
+    }
+
+    /**
+     * Browser Cache-Control max-age. Permanent disk cache → 1 year HTTP cache.
+     */
+    public static function httpMaxAge(): int
+    {
+        $ttl = self::cacheTtl();
+        return $ttl > 0 ? $ttl : 31536000;
     }
 
     /**
@@ -77,7 +91,7 @@ class PhotoProxy
 
     /**
      * Handle GET /blockroll/image?url=…
-     * Serves local disk cache; re-fetches at most every proxyCacheTtl (default 4 weeks).
+     * Serves local disk cache; re-fetches at most every proxyCacheTtl (default 4 weeks; 0 = never).
      * The ?refresh=1 query is ignored for anonymous traffic (local files persist).
      */
     public static function respond(?string $url, bool $refresh = false): Response
@@ -93,14 +107,16 @@ class PhotoProxy
         $hash = md5($url);
         $size = self::size();
         $ttl = self::cacheTtl();
+        $httpMaxAge = self::httpMaxAge();
         $dir = self::cacheRoot();
         if (!is_dir($dir)) {
             @mkdir($dir, 0775, true);
         }
 
-        $cached = self::findCached($dir, $hash, $size, $ttl);
+        // ttl 0 = never expire on disk (pass null to skip age check)
+        $cached = self::findCached($dir, $hash, $size, $ttl > 0 ? $ttl : null);
         if ($cached !== null) {
-            return self::fileResponse($cached, $ttl);
+            return self::fileResponse($cached, $httpMaxAge);
         }
 
         $fetched = self::fetch($url);
@@ -108,7 +124,7 @@ class PhotoProxy
             // Prefer serving a stale local file over redirecting to remote
             $stale = self::findCached($dir, $hash, $size, null);
             if ($stale !== null) {
-                return self::fileResponse($stale, $ttl);
+                return self::fileResponse($stale, $httpMaxAge);
             }
 
             return new Response('', null, 302, ['Location' => $url]);
@@ -121,7 +137,7 @@ class PhotoProxy
             @file_put_contents($path, $fetched['data']);
 
             return new Response($fetched['data'], $fetched['type'], 200, [
-                'Cache-Control' => 'public, max-age=' . $ttl,
+                'Cache-Control' => 'public, max-age=' . $httpMaxAge,
             ]);
         }
 
@@ -129,7 +145,7 @@ class PhotoProxy
         @file_put_contents($path, $processed['data']);
 
         return new Response($processed['data'], $processed['type'], 200, [
-            'Cache-Control' => 'public, max-age=' . $ttl,
+            'Cache-Control' => 'public, max-age=' . $httpMaxAge,
         ]);
     }
 
@@ -311,7 +327,7 @@ class PhotoProxy
             $mime = 'image/jpeg';
         }
 
-        $maxAge ??= self::cacheTtl();
+        $maxAge ??= self::httpMaxAge();
 
         return new Response((string) file_get_contents($path), $mime, 200, [
             'Cache-Control' => 'public, max-age=' . $maxAge,

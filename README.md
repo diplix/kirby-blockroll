@@ -16,7 +16,7 @@ Inspired by / adapted from [pfefferle/wordpress-blockroll](https://github.com/pf
 - `active` toggle (default on)
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / manual
 - Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present
-- Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every 4 weeks)
+- Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
 - **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml`)
 - **`<link rel="blogroll">`** discovery in the document head
 - No frontend JavaScript
@@ -148,8 +148,9 @@ In `site/config/config.php`:
 
 // Local avatar proxy (default off). When true, <img> points to /blockroll/image?url=…
 'diplix.blockroll.proxyPhotos'   => true,
-// Re-fetch cached avatars at most every N seconds (default 28 days)
+// Re-fetch cached avatars at most every N seconds (default 28 days). Use 0 = never re-fetch.
 // 'diplix.blockroll.proxyCacheTtl' => 2419200,
+// 'diplix.blockroll.proxyCacheTtl' => 0,
 'diplix.blockroll.proxySize'     => 96,      // square px (2× for ~48px CSS)
 'diplix.blockroll.proxyTimeout'  => 10,      // fetch timeout (seconds)
 'diplix.blockroll.proxyMaxBytes' => 512000,  // reject larger responses
@@ -159,7 +160,7 @@ In `site/config/config.php`:
 'diplix.blockroll.autoEnrich' => false,
 ```
 
-With `proxyPhotos`, remote avatar URLs are rewritten to a same-origin route that fetches once, center-crops to a square, scales to `proxySize` (default **96×96** for retina), stores the file under the Kirby cache (`blockroll-photos/`), and serves it locally. Files are re-fetched at most every `proxyCacheTtl` (default **4 weeks**); `?refresh` is ignored. If a re-fetch fails, a stale local file is preferred over redirecting. Local/`data:` URLs are unchanged. Requires PHP GD; without GD the original image is cached as-is.
+With `proxyPhotos`, remote avatar URLs are rewritten to a same-origin route that fetches once, center-crops to a square, scales to `proxySize` (default **96×96** for retina), stores the file under the Kirby cache (`blockroll-photos/`), and serves it locally. Files are re-fetched at most every `proxyCacheTtl` (default **4 weeks**); set `proxyCacheTtl` to **`0`** to never re-fetch. `?refresh` is ignored. If a re-fetch fails, a stale local file is preferred over redirecting. Local/`data:` URLs are unchanged. Requires PHP GD; without GD the original image is cached as-is.
 
 ## License
 

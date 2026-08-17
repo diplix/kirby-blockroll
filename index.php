@@ -42,7 +42,7 @@ App::plugin('diplix/blockroll', [
         'proxyTimeout'  => 10,
         'proxyMaxBytes' => 512000,
         'proxyCache'    => null, // default: {kirby cache root}/blockroll-photos
-        // Re-fetch local avatars at most every N seconds (default 28 days)
+        // Re-fetch local avatars at most every N seconds (default 28 days; 0 = never)
         'proxyCacheTtl' => 2419200,
         // Save-hook Autofill can rewrite blocks; off by default until safer
         'autoEnrich'    => false,
