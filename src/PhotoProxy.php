@@ -204,7 +204,7 @@ class PhotoProxy
             $response = Remote::get($url, [
                 'timeout' => $timeout,
                 'headers' => [
-                    'User-Agent' => 'Kirby-Blockroll/1.0 (+https://getkirby.com)',
+                    'User-Agent' => 'Kirby-Blogroll-Block/1.0 (+https://github.com/diplix/kirby-blogroll-block)',
                     'Accept'     => 'image/*,*/*;q=0.8',
                 ],
             ]);

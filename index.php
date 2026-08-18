@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Kirby Blockroll — blogroll block with h-cards, XFN and URL discovery.
+ * Kirby Blogroll Block — blogroll block with h-cards, XFN and URL discovery.
  *
  * @package   Blockroll
  * @author    Felix Schwenzel

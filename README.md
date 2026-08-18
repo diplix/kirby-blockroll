@@ -1,10 +1,12 @@
-# Kirby Blockroll
+# Kirby Blogroll Block
 
 A [Kirby](https://getkirby.com) block for publishing a blogroll: sites you follow, marked up as [h-cards](https://microformats.org/wiki/h-card) with optional [XFN](https://gmpg.org/xfn/) relationships.
 
 Paste a URL, save the page, and empty fields (name, description, feed, avatar) are filled from the remote site. Every autofilled value stays editable. Entries can be deactivated without deleting them.
 
 Inspired by / adapted from [pfefferle/wordpress-blockroll](https://github.com/pfefferle/wordpress-blockroll) (GPL-2.0-or-later).
+
+Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub repo and Composer package were renamed to `kirby-blogroll-block`; **public site URLs** (`/blockroll/image`, `/api/blockroll/discover`, …), Kirby plugin id `diplix/blockroll`, and config keys `diplix.blockroll.*` are unchanged for compatibility.
 
 ## Features (v1)
 
@@ -31,17 +33,17 @@ Inspired by / adapted from [pfefferle/wordpress-blockroll](https://github.com/pf
 ### Manual / Git
 
 ```bash
-git clone https://github.com/diplix/kirby-blockroll.git site/plugins/blockroll
+git clone https://github.com/diplix/kirby-blogroll-block.git site/plugins/kirby-blogroll-block
 ```
 
-Or download the ZIP from GitHub and extract it to `site/plugins/blockroll`.
+Or download the ZIP from GitHub and extract it to `site/plugins/kirby-blogroll-block`.
 
 ### Composer
 
 Until the package is on Packagist:
 
 ```bash
-composer require diplix/kirby-blockroll:dev-main
+composer require diplix/kirby-blogroll-block:dev-main
 ```
 
 with a VCS repository entry in your project `composer.json`:
@@ -51,13 +53,13 @@ with a VCS repository entry in your project `composer.json`:
   "repositories": [
     {
       "type": "vcs",
-      "url": "https://github.com/diplix/kirby-blockroll.git"
+      "url": "https://github.com/diplix/kirby-blogroll-block.git"
     }
   ]
 }
 ```
 
-After Packagist publish, `composer require diplix/kirby-blockroll` is enough.
+After Packagist publish, `composer require diplix/kirby-blogroll-block` is enough.
 
 ### Enable the block
 
@@ -141,7 +143,7 @@ Response:
 
 ### Options
 
-In `site/config/config.php`:
+In `site/config/config.php` (plugin id remains `diplix/blockroll`):
 
 ```php
 'diplix.blockroll.discoverTimeout' => 8, // seconds for Remote::get

@@ -1,9 +1,9 @@
 {
-    "name": "diplix/kirby-blockroll",
+    "name": "diplix/kirby-blogroll-block",
     "description": "Kirby Block: Blogroll with h-cards, XFN and URL discovery",
     "license": "GPL-2.0-or-later",
     "type": "kirby-plugin",
-    "homepage": "https://github.com/diplix/kirby-blockroll",
+    "homepage": "https://github.com/diplix/kirby-blogroll-block",
     "authors": [
         {
             "name": "Felix Schwenzel",
@@ -20,8 +20,8 @@
         "indieweb"
     ],
     "support": {
-        "issues": "https://github.com/diplix/kirby-blockroll/issues",
-        "source": "https://github.com/diplix/kirby-blockroll"
+        "issues": "https://github.com/diplix/kirby-blogroll-block/issues",
+        "source": "https://github.com/diplix/kirby-blogroll-block"
     },
     "require": {
         "php": ">=8.1.0",
@@ -29,12 +29,12 @@
         "getkirby/composer-installer": "^1.2"
     },
     "extra": {
-        "installer-name": "blockroll"
+        "installer-name": "kirby-blogroll-block"
     },
     "autoload": {
         "psr-4": {
             "Blockroll\\": "src/"
         }
     },
-    "version": "0.2.4"
+    "version": "0.2.5"
 }

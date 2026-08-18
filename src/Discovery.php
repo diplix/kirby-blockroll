@@ -48,7 +48,7 @@ class Discovery
                     'timeout' => $timeout,
                     'headers' => [
                         // Identify politely; some hosts (Tumblr) rate-limit anonymous bots harder
-                        'User-Agent'      => 'Mozilla/5.0 (compatible; Kirby-Blockroll/1.0; +https://github.com/diplix/kirby-blockroll)',
+                        'User-Agent'      => 'Mozilla/5.0 (compatible; Kirby-Blogroll-Block/1.0; +https://github.com/diplix/kirby-blogroll-block)',
                         'Accept'          => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
                         'Accept-Language' => 'en-US,en;q=0.8,de;q=0.7',
                     ],
