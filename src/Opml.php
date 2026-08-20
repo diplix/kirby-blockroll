@@ -684,10 +684,18 @@ class Opml
 
     private static function linkTag(string $href, string $title): string
     {
+        // htmlspecialchars statt esc(..., 'attr'): Kirby/Laminas Escaper
+        // hex-encodiert :, /, ?, Leerzeichen usw. — unnötig in doppelten Anführungszeichen.
+        $e = static fn(string $v): string => htmlspecialchars(
+            $v,
+            ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
+
         return '<link rel="blogroll" type="text/xml" href="'
-            . esc($href, 'attr')
+            . $e($href)
             . '" title="'
-            . esc($title, 'attr')
+            . $e($title)
             . '">' . PHP_EOL;
     }
 
