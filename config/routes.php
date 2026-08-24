@@ -33,6 +33,14 @@ return [
             return Opml::directoryResponse();
         },
     ],
+    // Same directory at the well-known discovery URL (opml.org / Upstream)
+    [
+        'pattern' => '.well-known/recommendations.opml',
+        'method'  => 'GET|HEAD',
+        'action'  => function () {
+            return Opml::directoryResponse();
+        },
+    ],
     // Home /?opml → 301 /opml
     [
         'pattern' => '',

@@ -42,7 +42,7 @@ $feedName = Opml::blockTitle($block);
 ?>
 <section class="h-feed blockroll">
   <h2 class="p-name blockroll-feed-name"><?= esc($feedName) ?></h2>
-  <ul class="blockroll-blogroll">
+  <ul class="xoxo blogroll blockroll-blogroll">
 <?php foreach ($links as $link):
     $name = $link['name'] !== '' ? $link['name'] : $link['url'];
     $xfnRel = Xfn::relString($link['xfn']);

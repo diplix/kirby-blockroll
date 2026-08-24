@@ -19,14 +19,17 @@ Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub 
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / manual
 - Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present
 - Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
-- **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml`)
-- **`<link rel="blogroll">`** discovery in the document head
+- **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml` + `/.well-known/recommendations.opml`)
+- **`<link rel="blogroll">`** discovery and site-wide **XFN profile** link in the document head
+- XOXO list markup (`xoxo blogroll`)
 - No frontend JavaScript
 
-## Not in v1 (planned later)
+## Not in v1 (see [ROADMAP.md](ROADMAP.md))
 
 - OPML import
 - Aggregation / visitor-facing sort/paging query params
+- `<source:blogroll>` in the site RSS/Atom feed (site feed snippet, not plugin-only)
+- Richer blogroll.social-style UX (headlines, widget, status icons, …)
 
 ## Installation
 
@@ -93,11 +96,14 @@ Outlines use `type="rss"` with `htmlUrl`, optional `xmlUrl` (feed), `text`, and 
 
 In the browser, OPML documents are styled via Upstream’s `opml.xsl` (served at `/blockroll/opml.xsl` and referenced with `<?xml-stylesheet …?>`).
 
-A **directory** OPML lists every listed page that has a blogroll (each entry points at that page’s `?opml`):
+A **directory** OPML lists every listed page that has a blogroll (each entry is an OPML 2.0 `type="include"` pointing at that page’s `?opml`):
 
 ```
 https://example.com/opml
+https://example.com/.well-known/recommendations.opml
 ```
+
+Both URLs return the same document. The directory `<head>` includes `dateModified` (newest blogroll page), `ownerName`, and `ownerId` (site URL).
 
 `/?opml` redirects with **301** to `/opml`. Page and directory OPML are file-cached under `site/cache/blockroll/opml/`. The blogroll page-id index persists and is only updated when a page with a blogroll is created, edited, deleted, or changes status/slug; after such edits the directory OPML is warmed in a deferred shutdown task. Unrelated page saves do not touch the index. Optional: `'diplix.blockroll.opmlMaxAge' => 3600` (browser `Cache-Control`, seconds).
 
@@ -107,7 +113,9 @@ Discovery (same idea as Upstream): pages with a blogroll inject
 <link rel="blogroll" type="text/xml" href="…?opml" title="…">
 ```
 
-into `<head>`. The home page also advertises every other blogroll page. The directory URL `/opml` is **not** advertised via `rel="blogroll"`.
+into `<head>`. The home page also advertises every other blogroll page. Every HTML page also gets `<link rel="profile" href="https://gmpg.org/xfn/11">` for XFN. The directory URL `/opml` (and the well-known alias) is **not** advertised via `rel="blogroll"`.
+
+The frontend list is marked up as [XOXO](https://microformats.org/wiki/xoxo) (`class="xoxo blogroll …"`).
 
 ### Panel API
 

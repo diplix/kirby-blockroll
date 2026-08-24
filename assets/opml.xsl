@@ -133,11 +133,11 @@ Adapted from pfefferle/wordpress-blockroll templates/opml.xsl
 
 				<div class="container">
 					<section class="recent">
-						<!-- One block per site; the directory OPML has type="link" outlines instead. -->
+						<!-- Directory OPML: type="include" (OPML 2.0) or legacy type="link". -->
 						<xsl:for-each select="/opml/body/outline">
 						<div class="pb-5">
 							<xsl:choose>
-								<xsl:when test="@type = 'link'">
+								<xsl:when test="@type = 'include' or @type = 'link'">
 									<h2>
 										<xsl:value-of select="@text"/>
 									</h2>

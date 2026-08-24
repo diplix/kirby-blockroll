@@ -14,6 +14,7 @@
 
 use Blockroll\Autofill;
 use Blockroll\Opml;
+use Blockroll\Xfn;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
 
@@ -103,13 +104,16 @@ App::plugin('diplix/blockroll', [
                 $oldPage instanceof Page ? $oldPage : null
             );
         },
-        // Inject CSS (when blogroll present) + rel="blogroll" discovery links
+        // Inject CSS (when blogroll present) + XFN profile + rel="blogroll" discovery
         'page.render:after' => function (string $contentType, array $data, string $html, $page) {
             if ($contentType !== 'html' || ($head = strpos($html, '</head>')) === false) {
                 return $html;
             }
 
             $tags = '';
+
+            // XFN profile is site-wide (relationships may appear outside the block)
+            $tags .= Xfn::profileTag();
 
             if (str_contains($html, 'blockroll-blogroll')) {
                 $url = $this->plugin('diplix/blockroll')->asset('blockroll.css')->url();
@@ -118,10 +122,6 @@ App::plugin('diplix/blockroll', [
 
             if ($page instanceof Page) {
                 $tags .= Opml::discoveryTags($page);
-            }
-
-            if ($tags === '') {
-                return $html;
             }
 
             return substr_replace($html, $tags, $head, 0);

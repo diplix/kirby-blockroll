@@ -72,4 +72,13 @@ class Xfn
         }
         return $options;
     }
+
+    /**
+     * HTML profile link for the XFN 1.1 vocabulary (site-wide, like Upstream).
+     * XFN is not limited to the blogroll, so the profile belongs on every page.
+     */
+    public static function profileTag(): string
+    {
+        return '<link rel="profile" href="https://gmpg.org/xfn/11">' . PHP_EOL;
+    }
 }
