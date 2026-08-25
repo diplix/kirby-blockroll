@@ -26,7 +26,8 @@
     "require": {
         "php": ">=8.1.0",
         "getkirby/cms": ">=4.0.0",
-        "getkirby/composer-installer": "^1.2"
+        "getkirby/composer-installer": "^1.2",
+        "simplepie/simplepie": "^1.9"
     },
     "extra": {
         "installer-name": "kirby-blogroll-block"
@@ -36,5 +37,5 @@
             "Blockroll\\": "src/"
         }
     },
-    "version": "0.3.0"
+    "version": "0.4.1"
 }

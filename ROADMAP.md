@@ -11,7 +11,7 @@ Ideas and deferred work for `kirby-blogroll-block`. Not a commitment to ship ord
 
 Inspired by [blogroll.social](https://blogroll.social/) and related notes:
 
-- Sort by last publication date
+- ~~Sort by last publication date~~ → **done in 0.4.0** (`sortBy: published` + `FeedActivity` cache; site can override per snippet)
 - Optional sort via headings / sections
 - Expand a row to show the last ~3 headlines (reader + blogroll combined)
 - Widget to embed the blogroll anywhere
@@ -27,8 +27,10 @@ Inspired by [blogroll.social](https://blogroll.social/) and related notes:
 - OPML import
 - Visitor-facing sort / paging via query params (Upstream has this; no JS)
 
-## Recently done (aligned with Upstream Aug 2026)
+## Recently done
 
+- **0.4.1:** Photo proxy SSRF hardening (scheme/host/IP checks, safe redirects, DNS pin)
+- **0.4.0:** Sort by last feed item (`published`); `FeedActivity` + hook `blockroll.feedActivity:after`
 - Directory OPML also at `/.well-known/recommendations.opml`
 - Directory `<head>`: `dateModified`, `ownerName`, `ownerId`
 - XOXO markup (`class="xoxo blogroll …"`) + site-wide XFN profile link

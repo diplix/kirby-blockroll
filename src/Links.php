@@ -83,6 +83,22 @@ class Links
                     (string) ($a['added'] ?? '')
                 )
             );
+        } elseif ($sortBy === 'published') {
+            usort(
+                $links,
+                static function (array $a, array $b): int {
+                    $ta = isset($a['lastPublished']) && is_numeric($a['lastPublished']) ? (int) $a['lastPublished'] : 0;
+                    $tb = isset($b['lastPublished']) && is_numeric($b['lastPublished']) ? (int) $b['lastPublished'] : 0;
+                    if ($ta !== $tb) {
+                        return $tb <=> $ta;
+                    }
+
+                    return strcasecmp(
+                        (string) ($a['name'] !== '' ? $a['name'] : $a['url']),
+                        (string) ($b['name'] !== '' ? $b['name'] : $b['url'])
+                    );
+                }
+            );
         }
 
         return $links;

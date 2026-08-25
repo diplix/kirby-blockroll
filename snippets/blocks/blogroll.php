@@ -4,6 +4,7 @@
 /** @var string|null $render */
 
 use Blockroll\Links;
+use Blockroll\FeedActivity;
 use Blockroll\Opml;
 use Blockroll\Photo;
 use Blockroll\Xfn;
@@ -26,7 +27,20 @@ foreach ($rawLinks as $item) {
 }
 
 $links = Links::onlyActive($links);
-$sortBy = $block->sortBy()->or('name')->value();
+// Optional override (e.g. /blogrolle forces "published"); else block setting
+$sortBy = isset($sortBy) && is_string($sortBy) && $sortBy !== ''
+    ? $sortBy
+    : $block->sortBy()->or('name')->value();
+
+if ($sortBy === 'published' && class_exists(FeedActivity::class)) {
+    foreach ($links as $i => $link) {
+        $feedUrl = (string) ($link['feedUrl'] ?? '');
+        $links[$i]['lastPublished'] = $feedUrl !== ''
+            ? FeedActivity::lastPublished($feedUrl)
+            : null;
+    }
+}
+
 $links = Links::sort($links, $sortBy);
 
 if ($links === []) {

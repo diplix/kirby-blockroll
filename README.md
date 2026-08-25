@@ -16,7 +16,9 @@ Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub 
 - Panel **Discover** button on each link URL (fills empty name / feed / description / photo via `POST /api/blockroll/discover`)
 - Panel API: `POST /api/blockroll/discover` with `{ "url": "…" }`
 - `active` toggle (default on)
-- Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / manual
+- Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / **last published** / manual
+- **Feed activity cache** (`FeedActivity`): SimplePie timestamps per `feedUrl`; call `FeedActivity::refreshAll()` from cron; hook `blockroll.feedActivity:after` for site cache invalidation
+- Snippet override: `snippet('blocks/blogroll', ['block' => $block, 'sortBy' => 'published'])`
 - Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present
 - Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
 - **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml` + `/.well-known/recommendations.opml`)
@@ -168,9 +170,15 @@ In `site/config/config.php` (plugin id remains `diplix/blockroll`):
 
 // Autofill empty fields on page save (default off)
 'diplix.blockroll.autoEnrich' => false,
+
+// Feed activity (last-published sort): SimplePie timeout when refreshing timestamps
+'diplix.blockroll.activityTimeout' => 8,
 ```
 
+After `FeedActivity::refreshAll()` the plugin triggers `blockroll.feedActivity:after` (`$payload`, `$pages`) so the site can invalidate its own page cache.
 With `proxyPhotos`, remote avatar URLs are rewritten to a same-origin route that fetches once, center-crops to a square, scales to `proxySize` (default **96×96** for retina), stores the file under the Kirby cache (`blockroll-photos/`), and serves it locally. Files are re-fetched at most every `proxyCacheTtl` (default **4 weeks**); set `proxyCacheTtl` to **`0`** to never re-fetch. `?refresh` is ignored. If a re-fetch fails, a stale local file is preferred over redirecting. Local/`data:` URLs are unchanged. Requires PHP GD; without GD the original image is cached as-is.
+
+**SSRF hardening:** the proxy accepts only `http`/`https`, rejects `file:`/`gopher:`/credentials-in-URL, blocks localhost and private/reserved IPs (literal and after DNS), refuses encoded IPv4 tricks, follows at most three redirects with the same checks on every hop, and pins DNS via `CURLOPT_RESOLVE` so a later lookup cannot rebind to an internal address.
 
 ## License
 

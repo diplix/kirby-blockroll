@@ -49,6 +49,8 @@ App::plugin('diplix/blockroll', [
         'autoEnrich'    => false,
         // Browser/CDN max-age for OPML responses (seconds)
         'opmlMaxAge'    => 3600,
+        // SimplePie timeout when refreshing feed activity timestamps
+        'activityTimeout' => 8,
     ],
     'blueprints' => [
         'blocks/blogroll' => __DIR__ . '/blueprints/blocks/blogroll.yml',
