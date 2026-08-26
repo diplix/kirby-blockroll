@@ -22,7 +22,7 @@ Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub 
 - Snippet override: `snippet('blocks/blogroll', ['block' => $block, 'sortBy' => 'published'])`
 - Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present (media symlink is republished on render)
 - Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
-- **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml` + `/.well-known/recommendations.opml`)
+- **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml` + `/.well-known/recommendations.opml`); per block: **Als OPML veröffentlichen** (default on) — off = show on the page only, skip discovery/directory
 - **`<link rel="blogroll">`** discovery and site-wide **XFN profile** link in the document head
 - XOXO list markup (`xoxo blogroll`)
 - No frontend JavaScript
@@ -89,13 +89,15 @@ fields:
 
 ### OPML
 
-Each page that contains a blogroll block exposes an OPML 2.0 feed of its **active** links:
+Each page that contains a blogroll block with **Als OPML veröffentlichen** enabled (default) exposes an OPML 2.0 feed of its **active** links:
 
 ```
 https://example.com/your-page?opml
 ```
 
 Outlines use `type="rss"` with `htmlUrl`, optional `xmlUrl` (feed), `text`, and `description`.
+
+Blocks with the toggle off are shown on the page only: no `?opml` for that page (unless another block on the same page still publishes OPML), no directory entry, no `rel="blogroll"`, no OPML download link under the list.
 
 In the browser, OPML documents are styled via Upstream’s `opml.xsl` (served at `/blockroll/opml.xsl` and referenced with `<?xml-stylesheet …?>`).
 

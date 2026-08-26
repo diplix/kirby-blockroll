@@ -57,7 +57,16 @@ class Opml
 
     public static function pageHasBlogroll(Page $page): bool
     {
-        return self::blocksOnPage($page) !== [];
+        return self::blocksOnPage($page, true) !== [];
+    }
+
+    /**
+     * Whether this blogroll block should appear in OPML discovery / aggregation.
+     * Missing field (older content) defaults to true.
+     */
+    public static function blockPublishesOpml(\Kirby\Cms\Block $block): bool
+    {
+        return $block->publishOpml()->toBool(true);
     }
 
     /**
@@ -98,7 +107,7 @@ class Opml
     public static function title(Page $page): string
     {
         $names = [];
-        foreach (self::blocksOnPage($page) as $block) {
+        foreach (self::blocksOnPage($page, true) as $block) {
             $names[] = self::blockTitle($block);
         }
 
@@ -121,7 +130,7 @@ class Opml
         $all = [];
         $sortBy = 'name';
 
-        foreach (self::blocksOnPage($page) as $block) {
+        foreach (self::blocksOnPage($page, true) as $block) {
             $sortBy = $block->sortBy()->or('name')->value();
             foreach ($block->links()->toStructure() as $item) {
                 $all[] = Links::normalize([
@@ -142,9 +151,12 @@ class Opml
     }
 
     /**
+     * Blogroll blocks on the page.
+     *
+     * @param bool $opmlOnly When true, only blocks with „Als OPML veröffentlichen“ (default on).
      * @return list<\Kirby\Cms\Block>
      */
-    public static function blocksOnPage(Page $page): array
+    public static function blocksOnPage(Page $page, bool $opmlOnly = false): array
     {
         $found = [];
 
@@ -160,9 +172,13 @@ class Opml
 
             try {
                 foreach ($field->toBlocks() as $block) {
-                    if ($block->type() === 'blogroll') {
-                        $found[] = $block;
+                    if ($block->type() !== 'blogroll') {
+                        continue;
                     }
+                    if ($opmlOnly && !self::blockPublishesOpml($block)) {
+                        continue;
+                    }
+                    $found[] = $block;
                 }
             } catch (Throwable) {
                 continue;

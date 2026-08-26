@@ -9,6 +9,12 @@ fields:
     default: Blogroll
     width: 1/2
     help: Bezeichnung dieser Sammlung (Frontend p-name, OPML-Titel). Pro Block überschreibbar.
+  publishOpml:
+    label: Als OPML veröffentlichen
+    type: toggle
+    default: true
+    width: 1/2
+    help: An = Discovery (rel=blogroll), Verzeichnis /opml und ?opml. Aus = nur auf der Seite anzeigen (z. B. Follow-Montag / neue Blogs).
   links:
     label: Links
     type: structure

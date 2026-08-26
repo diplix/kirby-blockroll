@@ -49,7 +49,8 @@ if ($links === []) {
 
 $showAvatars = $block->showAvatars()->toBool(true) && !$isRss;
 $showXfn = $block->showXfn()->toBool(false) && !$isRss;
-$opmlPage = (!$isRss && $block->parent() instanceof \Kirby\Cms\Page)
+$publishOpml = Opml::blockPublishesOpml($block);
+$opmlPage = (!$isRss && $publishOpml && $block->parent() instanceof \Kirby\Cms\Page)
     ? $block->parent()
     : null;
 $feedName = Opml::blockTitle($block);

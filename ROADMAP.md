@@ -29,6 +29,7 @@ Inspired by [blogroll.social](https://blogroll.social/) and related notes:
 
 ## Recently done
 
+- **0.5.0:** Per-block toggle **Als OPML veröffentlichen** (default on) — off skips discovery, `/opml`, `?opml`, and download link
 - **0.4.3:** Stop replacing core `k-url-field-preview` (broke System → Plugins names); avatar preview via `blockroll-photo`; Discover SSRF guard
 - **0.4.2:** Republish `blockroll.css` media symlink on render (avoids broken CSS after plugin folder rename/update)
 - **0.4.1:** Photo proxy SSRF hardening (scheme/host/IP checks, safe redirects, DNS pin)
