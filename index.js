@@ -1,9 +1,11 @@
 /**
- * Panel: avatar thumbnails in structure table + Discover button on URL field.
+ * Panel: avatar thumbnails (custom field preview) + Discover on URL field.
+ * Do not replace core k-url-field-preview — that breaks System → Plugins links.
  */
 panel.plugin("diplix/blockroll", {
   components: {
-    "k-url-field-preview": {
+    // Preview for type: blockroll-photo only (see blueprints/blocks/blogroll.yml)
+    "k-blockroll-photo-field-preview": {
       props: {
         value: [String, Number],
         column: Object,
@@ -13,9 +15,6 @@ panel.plugin("diplix/blockroll", {
         raw() {
           return (this.value || "").toString().trim();
         },
-        isAvatar() {
-          return this.field?.name === "photo";
-        },
         src() {
           if (!this.raw) {
             return "";
@@ -24,7 +23,7 @@ panel.plugin("diplix/blockroll", {
         },
       },
       template: `
-        <div class="k-blockroll-photo-field-preview" v-if="isAvatar">
+        <div class="k-blockroll-photo-field-preview">
           <img
             v-if="src"
             :src="src"
@@ -34,19 +33,14 @@ panel.plugin("diplix/blockroll", {
           />
           <span v-else class="k-blockroll-photo-field-preview__empty" aria-hidden="true"></span>
         </div>
-        <div v-else>
-          <a
-            v-if="raw"
-            :href="raw"
-            class="k-link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ raw }}</a>
-        </div>
       `,
     },
   },
   fields: {
+    // Same as url in the drawer; structure table uses k-blockroll-photo-field-preview
+    "blockroll-photo": {
+      extends: "k-url-field",
+    },
     "blockroll-url": {
       extends: "k-url-field",
       data() {

@@ -37,6 +37,14 @@ class Discovery
             return $empty + ['error' => 'Ungültige URL'];
         }
 
+        // Same SSRF guard as PhotoProxy (Panel-auth is not enough against internal targets)
+        if (
+            class_exists(PhotoProxy::class) === true
+            && PhotoProxy::isAllowedRemoteUrl($url, true) !== true
+        ) {
+            return $empty + ['error' => 'URL nicht erlaubt (nur öffentliche http/https-Hosts)'];
+        }
+
         $timeout = (int) (App::instance()->option('diplix.blockroll.discoverTimeout') ?? 8);
         $attempts = max(1, (int) (App::instance()->option('diplix.blockroll.discoverRetries') ?? 3));
         $lastCode = 0;

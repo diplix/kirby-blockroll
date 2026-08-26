@@ -14,6 +14,7 @@ Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub 
 - URL discovery: feed (`rel=alternate`), name (h-card `p-name` → `og:title` → `<title>`), description (h-card `p-note` → meta description), photo (h-card → favicon)
 - Autofill on page save (only empty fields; off by default via `autoEnrich`)
 - Panel **Discover** button on each link URL (fills empty name / feed / description / photo via `POST /api/blockroll/discover`)
+- Panel avatar preview via custom field type `blockroll-photo` (does **not** replace core `k-url-field-preview`)
 - Panel API: `POST /api/blockroll/discover` with `{ "url": "…" }`
 - `active` toggle (default on)
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / **last published** / manual
@@ -128,7 +129,9 @@ POST /api/blockroll/discover
 { "url": "https://example.com" }
 ```
 
-The blogroll URL field (`blockroll-url`) has a **Discover** button that calls this endpoint and fills empty sibling fields in the structure entry.
+The blogroll URL field (`blockroll-url`) has a **Discover** button that calls this endpoint and fills empty sibling fields in the structure entry. Avatar URLs use field type `blockroll-photo` so the structure table can show a thumbnail without overriding Kirby’s global URL preview (which the System → Plugins list also uses).
+
+Discover, the public image proxy, and feed-activity fetches share the same public-host SSRF checks.
 
 ```http
 POST /api/blockroll/discover

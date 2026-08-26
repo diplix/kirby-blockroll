@@ -19,6 +19,16 @@ return [
                 ], 400);
             }
 
+            if (
+                class_exists(\Blockroll\PhotoProxy::class)
+                && \Blockroll\PhotoProxy::isAllowedRemoteUrl($url, true) !== true
+            ) {
+                return Response::json([
+                    'status'  => 'error',
+                    'message' => 'URL not allowed',
+                ], 400);
+            }
+
             $data = Discovery::fromUrl($url);
             $error = isset($data['error']) ? (string) $data['error'] : '';
             unset($data['error']);

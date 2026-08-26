@@ -60,6 +60,10 @@ App::plugin('diplix/blockroll', [
         'blockroll-url' => [
             'extends' => 'url',
         ],
+        // Same as url in the drawer; structure table gets avatar preview via Panel JS
+        'blockroll-photo' => [
+            'extends' => 'url',
+        ],
     ],
     'snippets' => [
         'blocks/blogroll'           => __DIR__ . '/snippets/blocks/blogroll.php',

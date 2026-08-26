@@ -53,7 +53,7 @@ fields:
         help: KirbyText erlaubt (z. B. Links). Wird als p-note gerendert.
       photo:
         label: Avatar / Icon URL
-        type: url
+        type: blockroll-photo
         help: In der Tabellenübersicht als Bild; im Editor normale URL
       xfn:
         label: XFN

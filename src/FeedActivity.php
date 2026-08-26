@@ -191,6 +191,13 @@ class FeedActivity
             throw new \RuntimeException('simplepie/simplepie is not installed');
         }
 
+        if (
+            class_exists(PhotoProxy::class)
+            && PhotoProxy::isAllowedRemoteUrl($feedUrl, true) !== true
+        ) {
+            throw new \RuntimeException('feed URL not allowed');
+        }
+
         $feed = new SimplePie();
         $feed->set_feed_url($feedUrl);
         $feed->enable_cache(false);
