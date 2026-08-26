@@ -19,7 +19,7 @@ Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub 
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / **last published** / manual
 - **Feed activity cache** (`FeedActivity`): SimplePie timestamps per `feedUrl`; call `FeedActivity::refreshAll()` from cron; hook `blockroll.feedActivity:after` for site cache invalidation
 - Snippet override: `snippet('blocks/blogroll', ['block' => $block, 'sortBy' => 'published'])`
-- Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present
+- Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present (media symlink is republished on render)
 - Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
 - **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml` + `/.well-known/recommendations.opml`)
 - **`<link rel="blogroll">`** discovery and site-wide **XFN profile** link in the document head
@@ -179,6 +179,10 @@ After `FeedActivity::refreshAll()` the plugin triggers `blockroll.feedActivity:a
 With `proxyPhotos`, remote avatar URLs are rewritten to a same-origin route that fetches once, center-crops to a square, scales to `proxySize` (default **96×96** for retina), stores the file under the Kirby cache (`blockroll-photos/`), and serves it locally. Files are re-fetched at most every `proxyCacheTtl` (default **4 weeks**); set `proxyCacheTtl` to **`0`** to never re-fetch. `?refresh` is ignored. If a re-fetch fails, a stale local file is preferred over redirecting. Local/`data:` URLs are unchanged. Requires PHP GD; without GD the original image is cached as-is.
 
 **SSRF hardening:** the proxy accepts only `http`/`https`, rejects `file:`/`gopher:`/credentials-in-URL, blocks localhost and private/reserved IPs (literal and after DNS), refuses encoded IPv4 tricks, follows at most three redirects with the same checks on every hop, and pins DNS via `CURLOPT_RESOLVE` so a later lookup cannot rebind to an internal address.
+
+### Troubleshooting: missing blogroll CSS after update
+
+Kirby serves `blockroll.css` via a symlink under `media/plugins/diplix/blockroll/…`. After renaming or moving the plugin folder (or some updates), that symlink can still point at the old path → **403/404** and unstyled blogrolls. From **0.4.2** the plugin calls `publish()` on render so the symlink is refreshed. If styles are still missing, delete `media/plugins/diplix/blockroll/` and reload a blogroll page (or clear page cache / Staticache for those URLs).
 
 ## License
 

@@ -118,8 +118,10 @@ App::plugin('diplix/blockroll', [
             $tags .= Xfn::profileTag();
 
             if (str_contains($html, 'blockroll-blogroll')) {
-                $url = $this->plugin('diplix/blockroll')->asset('blockroll.css')->url();
-                $tags .= '<link rel="stylesheet" href="' . $url . '">' . PHP_EOL;
+                $asset = $this->plugin('diplix/blockroll')->asset('blockroll.css');
+                // Ensure media symlink exists (e.g. after plugin folder rename).
+                $asset->publish();
+                $tags .= '<link rel="stylesheet" href="' . $asset->url() . '">' . PHP_EOL;
             }
 
             if ($page instanceof Page) {
