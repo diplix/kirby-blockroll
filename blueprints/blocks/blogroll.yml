@@ -14,7 +14,7 @@ fields:
     type: toggle
     default: true
     width: 1/2
-    help: An = Discovery (rel=blogroll), Verzeichnis /opml und ?opml. Aus = nur auf der Seite anzeigen (z. B. Follow-Montag / neue Blogs).
+    help: An = Discovery (rel=blogroll), Verzeichnis /opml und /seite.opml. Aus = nur auf der Seite anzeigen (z. B. Follow-Montag / neue Blogs).
   links:
     label: Links
     type: structure

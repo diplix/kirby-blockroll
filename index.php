@@ -14,6 +14,7 @@
 
 use Blockroll\Autofill;
 use Blockroll\Opml;
+use Blockroll\Options;
 use Blockroll\Xfn;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
@@ -37,7 +38,7 @@ App::plugin('diplix/blockroll', [
     'options' => [
         'discoverTimeout' => 8,
         'discoverRetries' => 3,
-        // Cache remote avatars via GET /blockroll/image?url=… (site/cache/blockroll-photos)
+        // Cache remote avatars via GET /{routePrefix}/image?url=… (site/cache/blockroll-photos)
         'proxyPhotos'   => false,
         'proxySize'     => 96, // px square (2× retina for ~48px CSS avatars)
         'proxyTimeout'  => 10,
@@ -47,6 +48,12 @@ App::plugin('diplix/blockroll', [
         'proxyCacheTtl' => 2419200,
         // Save-hook Autofill can rewrite blocks; off by default until safer
         'autoEnrich'    => false,
+        // Inject plugin CSS when a blogroll is present (set false if you bundle your own)
+        'injectCss'     => true,
+        // Public routes: directory OPML, well-known alias, proxy/XSL prefix
+        'directoryPath' => 'opml',
+        'wellKnown'     => true,
+        'routePrefix'   => 'blockroll',
         // Browser/CDN max-age for OPML responses (seconds)
         'opmlMaxAge'    => 3600,
         // SimplePie timeout when refreshing feed activity timestamps
@@ -63,6 +70,14 @@ App::plugin('diplix/blockroll', [
         // Same as url in the drawer; structure table gets avatar preview via Panel JS
         'blockroll-photo' => [
             'extends' => 'url',
+            'props' => [
+                'proxyPhotos' => function () {
+                    return \Blockroll\PhotoProxy::enabled();
+                },
+                'routePrefix' => function () {
+                    return \Blockroll\Options::routePrefix();
+                },
+            ],
         ],
     ],
     'snippets' => [
@@ -77,7 +92,9 @@ App::plugin('diplix/blockroll', [
     'api' => [
         'routes' => require __DIR__ . '/config/api.php',
     ],
-    'routes' => require __DIR__ . '/config/routes.php',
+    'routes' => function () {
+        return require __DIR__ . '/config/routes.php';
+    },
     'hooks' => [
         'page.update:after' => function (Page $newPage, Page $oldPage) {
             Opml::onPageChanged($newPage, $oldPage);
@@ -121,7 +138,10 @@ App::plugin('diplix/blockroll', [
             // XFN profile is site-wide (relationships may appear outside the block)
             $tags .= Xfn::profileTag();
 
-            if (str_contains($html, 'blockroll-blogroll')) {
+            if (
+                Options::injectCss()
+                && str_contains($html, 'blockroll-blogroll')
+            ) {
                 $asset = $this->plugin('diplix/blockroll')->asset('blockroll.css');
                 // Ensure media symlink exists (e.g. after plugin folder rename).
                 $asset->publish();

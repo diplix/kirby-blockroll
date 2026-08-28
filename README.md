@@ -2,11 +2,13 @@
 
 A [Kirby](https://getkirby.com) block for publishing a blogroll: sites you follow, marked up as [h-cards](https://microformats.org/wiki/h-card) with optional [XFN](https://gmpg.org/xfn/) relationships.
 
-Paste a URL, save the page, and empty fields (name, description, feed, avatar) are filled from the remote site. Every autofilled value stays editable. Entries can be deactivated without deleting them.
+Paste a URL and click **Discover** on the row to fill empty fields (name, description, feed, avatar) from the remote site. Every filled value stays editable. Entries can be deactivated without deleting them.
+
+Autofill on **page save** (`autoEnrich`) is **off by default**. It runs synchronous HTTP requests during Panel save and can time out on long lists — treat it as an explicit opt-in.
 
 Inspired by / adapted from [pfefferle/wordpress-blockroll](https://github.com/pfefferle/wordpress-blockroll) (GPL-2.0-or-later).
 
-Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub repo and Composer package were renamed to `kirby-blogroll-block`; **public site URLs** (`/blockroll/image`, `/api/blockroll/discover`, …), Kirby plugin id `diplix/blockroll`, and config keys `diplix.blockroll.*` are unchanged for compatibility.
+Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub repo and Composer package were renamed to `kirby-blogroll-block`; **default public site URLs** (`/blockroll/image`, `/opml`, `/api/blockroll/discover`, …), Kirby plugin id `diplix/blockroll`, and config keys `diplix.blockroll.*` are unchanged for compatibility. Directory, well-known, and proxy/XSL paths are configurable (see Options).
 
 ## Features (v1)
 
@@ -20,10 +22,10 @@ Formerly published as `diplix/kirby-blockroll` / folder `blockroll`. The GitHub 
 - Frontend snippet: h-card list, optional avatars and XFN labels, sort by name / added / **last published** / manual
 - **Feed activity cache** (`FeedActivity`): SimplePie timestamps per `feedUrl`; call `FeedActivity::refreshAll()` from cron; hook `blockroll.feedActivity:after` for site cache invalidation
 - Snippet override: `snippet('blocks/blogroll', ['block' => $block, 'sortBy' => 'published'])`
-- Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present (media symlink is republished on render)
-- Optional local photo proxy (`proxyPhotos`): `GET /blockroll/image?url=…` stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
-- **OPML export** for each blogroll page (`?opml`) and a site directory (`/opml` + `/.well-known/recommendations.opml`); per block: **Als OPML veröffentlichen** (default on) — off = show on the page only, skip discovery/directory
-- **`<link rel="blogroll">`** discovery and site-wide **XFN profile** link in the document head
+- Frontend CSS (adapted from Upstream `style.scss`), loaded only when the block is present (disable with `injectCss`)
+- Optional local photo proxy (`proxyPhotos`): `GET /{routePrefix}/image?url=…` (route is registered only when the proxy is on) stores avatars under `site/cache/blockroll-photos` (re-fetch at most every `proxyCacheTtl`; `0` = never)
+- **OPML export** for each blogroll page (`/your-page.opml`, with `?opml` as a 301 alias) and a site directory (`/opml` + `/.well-known/recommendations.opml` by default; disable or rename via `directoryPath` / `wellKnown`); per block: **Als OPML veröffentlichen** (default on) — off = show on the page only, skip discovery/directory
+- **`<link rel="blogroll">`** discovery (HTML + OPML, distinguished by MIME type) and site-wide **XFN profile** link in the document head
 - XOXO list markup (`xoxo blogroll`)
 - No frontend JavaScript
 
@@ -83,44 +85,51 @@ fields:
 ## Usage
 
 1. Add a **Blogroll** block.
-2. Add a link row, set **URL**, leave name/description empty if you want autofill.
-3. Save the page — discover runs for incomplete rows (when `autoEnrich` is enabled).
-4. Edit any field afterwards; subsequent saves will not overwrite filled fields.
+2. Add a link row and set **URL**.
+3. Click **Discover** to fill empty name / feed / description / photo.
+4. Edit any field afterwards; Discover (and `autoEnrich`) never overwrite filled fields.
 
 ### OPML
 
-Each page that contains a blogroll block with **Als OPML veröffentlichen** enabled (default) exposes an OPML 2.0 feed of its **active** links:
+Each page that contains a blogroll block with **Als OPML veröffentlichen** enabled (default) exposes an OPML 2.0 feed of its **active** links. The canonical URL is a content-representation path (same idea as Kirby’s `.md`):
 
 ```
-https://example.com/your-page?opml
+https://example.com/your-page.opml
 ```
+
+`https://example.com/your-page?opml` redirects with **301** to that URL. `/?opml` redirects with **301** to the directory URL (default `/opml`); if `directoryPath` is `false`, the home query alias is not registered.
 
 Outlines use `type="rss"` with `htmlUrl`, optional `xmlUrl` (feed), `text`, and `description`.
 
-Blocks with the toggle off are shown on the page only: no `?opml` for that page (unless another block on the same page still publishes OPML), no directory entry, no `rel="blogroll"`, no OPML download link under the list.
+Blocks with the toggle off are shown on the page only: no `.opml` for that page (unless another block on the same page still publishes OPML), no directory entry, no `rel="blogroll"`, no OPML download link under the list.
 
-In the browser, OPML documents are styled via Upstream’s `opml.xsl` (served at `/blockroll/opml.xsl` and referenced with `<?xml-stylesheet …?>`).
+In the browser, OPML documents are styled via Upstream’s `opml.xsl` (served at `/{routePrefix}/opml.xsl`, default `/blockroll/opml.xsl`, and referenced with `<?xml-stylesheet …?>`).
 
-A **directory** OPML lists every listed page that has a blogroll (each entry is an OPML 2.0 `type="include"` pointing at that page’s `?opml`):
+A **directory** OPML lists every listed page that has a blogroll (each entry is an OPML 2.0 `type="include"` pointing at that page’s `.opml`):
 
 ```
 https://example.com/opml
 https://example.com/.well-known/recommendations.opml
 ```
 
-Both URLs return the same document. The directory `<head>` includes `dateModified` (newest blogroll page), `ownerName`, and `ownerId` (site URL).
+Both URLs return the same document unless you turn one of them off (`directoryPath` / `wellKnown`). The directory `<head>` includes `dateModified` (newest blogroll page), `ownerName`, and `ownerId` (site URL). The image proxy route is registered only when `proxyPhotos` is `true`.
 
-`/?opml` redirects with **301** to `/opml`. Page and directory OPML are file-cached under `site/cache/blockroll/opml/`. The blogroll page-id index persists and is only updated when a page with a blogroll is created, edited, deleted, or changes status/slug; after such edits the directory OPML is warmed in a deferred shutdown task. Unrelated page saves do not touch the index. Optional: `'diplix.blockroll.opmlMaxAge' => 3600` (browser `Cache-Control`, seconds).
+Page and directory OPML are file-cached under `site/cache/blockroll/opml/`. The blogroll page-id index persists and is only updated when a page with a blogroll is created, edited, deleted, or changes status/slug; after such edits the directory OPML is warmed in a deferred shutdown task. Unrelated page saves do not touch the index. Optional: `'diplix.blockroll.opmlMaxAge' => 3600` (browser `Cache-Control`, seconds).
 
-Discovery (same idea as Upstream): pages with a blogroll inject
+Discovery (same idea as Upstream): pages with a blogroll inject both representations, distinguished by MIME type:
 
 ```html
-<link rel="blogroll" type="text/xml" href="…?opml" title="…">
+<link rel="blogroll" type="text/html" href="https://example.com/your-page" title="…">
+<link rel="blogroll" type="text/xml" href="https://example.com/your-page.opml" title="…">
 ```
 
 into `<head>`. The home page also advertises every other blogroll page. Every HTML page also gets `<link rel="profile" href="https://gmpg.org/xfn/11">` for XFN. The directory URL `/opml` (and the well-known alias) is **not** advertised via `rel="blogroll"`.
 
 The frontend list is marked up as [XOXO](https://microformats.org/wiki/xoxo) (`class="xoxo blogroll …"`).
+
+#### Static caches and query strings
+
+Kirby’s own page cache ignores `?opml` (requests with query data are not cacheable). **External** caches often do not: Staticache, nginx `fastcgi_cache`, and CDNs typically key on the path only and would serve the HTML page for `/your-page?opml`. That is why `.opml` is canonical. If you previously advertised `?opml`, keep the 301 alias; do not point new `rel="blogroll"` links at the query string.
 
 ### Panel API
 
@@ -163,7 +172,18 @@ In `site/config/config.php` (plugin id remains `diplix/blockroll`):
 ```php
 'diplix.blockroll.discoverTimeout' => 8, // seconds for Remote::get
 
-// Local avatar proxy (default off). When true, <img> points to /blockroll/image?url=…
+// Plugin CSS in <head> when a blogroll is on the page (default true).
+// Set false if you bundle/copy blockroll.css yourself (CSP, asset pipeline).
+// 'diplix.blockroll.injectCss' => false,
+
+// Public routes (defaults keep /opml, /.well-known/recommendations.opml, /blockroll/…)
+// false or '' disables the directory; a page with that slug is then unshadowed.
+// 'diplix.blockroll.directoryPath' => 'opml',
+// 'diplix.blockroll.wellKnown'     => true,
+// Prefix for /{prefix}/opml.xsl and, when proxyPhotos is on, /{prefix}/image
+// 'diplix.blockroll.routePrefix'   => 'blockroll',
+
+// Local avatar proxy (default off). When true, <img> points to /{routePrefix}/image?url=…
 'diplix.blockroll.proxyPhotos'   => true,
 // Re-fetch cached avatars at most every N seconds (default 28 days). Use 0 = never re-fetch.
 // 'diplix.blockroll.proxyCacheTtl' => 2419200,
@@ -173,7 +193,9 @@ In `site/config/config.php` (plugin id remains `diplix/blockroll`):
 'diplix.blockroll.proxyMaxBytes' => 512000,  // reject larger responses
 // 'diplix.blockroll.proxyCache' => '/absolute/path/to/cache',
 
-// Autofill empty fields on page save (default off)
+// Autofill empty fields on page save (default off). Opt-in only: each save may
+// hit the network once per incomplete row (timeout × retries) and can exceed
+// PHP's max_execution_time on large blogrolls.
 'diplix.blockroll.autoEnrich' => false,
 
 // Feed activity (last-published sort): SimplePie timeout when refreshing timestamps

@@ -18,14 +18,21 @@ class Opml
     private const DEFAULT_MAX_AGE = 3600;
 
     /**
-     * Handle GET …?opml for a page path (not home — home ?opml redirects to /opml).
-     * Returns a Response, or null to continue routing.
+     * Handle GET /path.opml for a page path (not home / directory).
+     * Returns a Response, or null to continue routing (Kirby representations, 404).
      */
     public static function handle(?string $path): ?Response
     {
         $path = trim((string) $path, '/');
 
-        if ($path === '' || $path === 'home' || $path === 'opml') {
+        $directory = Options::directoryPath();
+
+        if ($path === '' || ($directory !== null && $path === $directory)) {
+            return null;
+        }
+
+        // Home OPML is the directory when that route exists
+        if ($path === 'home' && $directory !== null) {
             return null;
         }
 
@@ -70,25 +77,26 @@ class Opml
     }
 
     /**
-     * OPML URL for a page (permalink + ?opml).
-     * Home page points at the canonical directory /opml.
+     * Canonical OPML URL for a page (`{permalink}.opml`, like `{permalink}.md`).
+     * Home page points at the directory when it is enabled, otherwise `/home.opml`.
      */
     public static function opmlUrl(Page $page): string
     {
         if ($page->isHomePage()) {
-            return url('opml');
+            $path = Options::directoryPath();
+            return $path !== null ? url($path) : url('home.opml');
         }
 
-        $url = $page->url();
-        return $url . (str_contains($url, '?') ? '&' : '?') . 'opml';
+        return $page->url() . '.opml';
     }
 
     /**
-     * Canonical directory URL.
+     * Canonical directory URL (`/opml` by default).
      */
     public static function directoryUrl(): string
     {
-        return url('opml');
+        $path = Options::directoryPath();
+        return url($path ?? 'opml');
     }
 
     /**
@@ -596,7 +604,7 @@ class Opml
      */
     public static function stylesheetUrl(): string
     {
-        return url('blockroll/opml.xsl');
+        return url(Options::routePrefix() . '/opml.xsl');
     }
 
     /**
@@ -682,7 +690,7 @@ class Opml
         $tags = [];
 
         if (self::pageHasBlogroll($page) && !$page->isHomePage()) {
-            $tags[] = self::linkTag(self::opmlUrl($page), self::title($page));
+            $tags = array_merge($tags, self::discoveryPair($page));
         }
 
         // Home: advertise every blogroll page (like Upstream), not /opml
@@ -691,14 +699,29 @@ class Opml
                 if ($blogrollPage->isHomePage()) {
                     continue;
                 }
-                $tags[] = self::linkTag(self::opmlUrl($blogrollPage), self::title($blogrollPage));
+                $tags = array_merge($tags, self::discoveryPair($blogrollPage));
             }
         }
 
         return implode('', $tags);
     }
 
-    private static function linkTag(string $href, string $title): string
+    /**
+     * HTML + OPML discovery links for one blogroll page (MIME types distinguish the pair).
+     *
+     * @return list<string>
+     */
+    public static function discoveryPair(Page $page): array
+    {
+        $title = self::title($page);
+
+        return [
+            self::linkTag($page->url(), $title, 'text/html'),
+            self::linkTag(self::opmlUrl($page), $title, 'text/xml'),
+        ];
+    }
+
+    private static function linkTag(string $href, string $title, string $type = 'text/xml'): string
     {
         // htmlspecialchars statt esc(..., 'attr'): Kirby/Laminas Escaper
         // hex-encodiert :, /, ?, Leerzeichen usw. — unnötig in doppelten Anführungszeichen.
@@ -708,11 +731,34 @@ class Opml
             'UTF-8'
         );
 
-        return '<link rel="blogroll" type="text/xml" href="'
+        return '<link rel="blogroll" type="'
+            . $e($type)
+            . '" href="'
             . $e($href)
             . '" title="'
             . $e($title)
             . '">' . PHP_EOL;
+    }
+
+    /**
+     * One OPML 2.0 rss outline element.
+     */
+    public static function rssOutline(array $link, string $indent = '    '): string
+    {
+        $text = ($link['name'] ?? '') !== '' ? $link['name'] : ($link['url'] ?? '');
+        $desc = self::plainDescription((string) ($link['description'] ?? ''));
+        $e = static fn(string $v): string => htmlspecialchars($v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+        $attrs = 'text="' . $e((string) $text) . '" type="rss"';
+        if ($desc !== '') {
+            $attrs .= ' description="' . $e($desc) . '"';
+        }
+        if (($link['feedUrl'] ?? '') !== '') {
+            $attrs .= ' xmlUrl="' . $e((string) $link['feedUrl']) . '"';
+        }
+        $attrs .= ' htmlUrl="' . $e((string) ($link['url'] ?? '')) . '"';
+
+        return $indent . '<outline ' . $attrs . ' />';
     }
 
     /**

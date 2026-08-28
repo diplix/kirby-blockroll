@@ -19,20 +19,8 @@ echo Opml::prolog();
     <ownerName><?= htmlspecialchars(site()->title()->value(), ENT_XML1 | ENT_QUOTES, 'UTF-8') ?></ownerName>
   </head>
   <body>
-<?php foreach ($links as $link):
-    $text = $link['name'] !== '' ? $link['name'] : $link['url'];
-    $desc = Opml::plainDescription((string) ($link['description'] ?? ''));
-    $attrs = 'text="' . htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '"';
-    $attrs .= ' type="rss"';
-    if ($desc !== '') {
-        $attrs .= ' description="' . htmlspecialchars($desc, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '"';
-    }
-    if (($link['feedUrl'] ?? '') !== '') {
-        $attrs .= ' xmlUrl="' . htmlspecialchars($link['feedUrl'], ENT_XML1 | ENT_QUOTES, 'UTF-8') . '"';
-    }
-    $attrs .= ' htmlUrl="' . htmlspecialchars($link['url'], ENT_XML1 | ENT_QUOTES, 'UTF-8') . '"';
-    ?>
-    <outline <?= $attrs ?> />
+<?php foreach ($links as $link): ?>
+<?= Opml::rssOutline($link) . "\n" ?>
 <?php endforeach ?>
   </body>
 </opml>

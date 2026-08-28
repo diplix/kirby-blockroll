@@ -9,7 +9,7 @@ class Photo
 {
     /**
      * When `diplix.blockroll.proxyPhotos` is true, remote http(s) photos
-     * are rewritten to the local `/blockroll/image?url=…` cache proxy.
+     * are rewritten to the local `/{routePrefix}/image?url=…` cache proxy.
      */
     public static function src(string $url): string
     {

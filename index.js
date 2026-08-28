@@ -19,7 +19,22 @@ panel.plugin("diplix/blockroll", {
           if (!this.raw) {
             return "";
           }
-          return "/blockroll/image?url=" + encodeURIComponent(this.raw);
+          const field = this.field || {};
+          if (field.proxyPhotos !== true) {
+            return this.raw;
+          }
+          const prefix = String(field.routePrefix || "blockroll").replace(
+            /^\/+|\/+$/g,
+            ""
+          );
+          const site = (this.$panel?.urls?.site || "").replace(/\/+$/, "");
+          return (
+            site +
+            "/" +
+            prefix +
+            "/image?url=" +
+            encodeURIComponent(this.raw)
+          );
         },
       },
       template: `

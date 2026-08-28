@@ -7,15 +7,9 @@
 .blockroll-blogroll {
   list-style: none;
   margin: 0;
+  margin-inline-start: 0;
   padding: 0;
-}
-
-/* Beat site rule `.text ul { margin-left: 1rem }` */
-.text ul.blockroll-blogroll,
-.text ol.blockroll-blogroll,
-ul.blockroll-blogroll {
-  margin-left: 0;
-  padding-left: 0;
+  padding-inline-start: 0;
 }
 
 .blockroll > .blockroll-feed-name {

@@ -85,12 +85,12 @@ class PhotoProxy
             return $remoteUrl;
         }
 
-        $base = url('blockroll/image');
+        $base = url(Options::routePrefix() . '/image');
         return $base . (str_contains($base, '?') ? '&' : '?') . 'url=' . rawurlencode($remoteUrl);
     }
 
     /**
-     * Handle GET /blockroll/image?url=…
+     * Handle GET /{routePrefix}/image?url=…
      * Serves local disk cache; re-fetches at most every proxyCacheTtl (default 4 weeks; 0 = never).
      * The ?refresh=1 query is ignored for anonymous traffic (local files persist).
      */
@@ -343,7 +343,7 @@ class PhotoProxy
 
     private static function isAlreadyProxied(string $url): bool
     {
-        return str_contains($url, '/blockroll/image')
+        return str_contains($url, '/' . Options::routePrefix() . '/image')
             || str_contains($url, 'linkembed/image');
     }
 
